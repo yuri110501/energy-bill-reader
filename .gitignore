@@ -1,0 +1,18 @@
+# Ambientes virtuais e cache
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Variáveis de ambiente (Chaves de API)
+.env
+
+# Arquivos de armazenamento e contas de energia
+storage/
+dataset/
+
+# Arquivos temporários do OS
+.DS_Store
+Thumbs.db
