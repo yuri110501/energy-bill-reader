@@ -1,4 +1,4 @@
-# 🔌 Energy Bill Reader
+# 🔌 pdfplumber (Energy Bill Reader Fork)
 
 Leitura automática de **contas de energia elétrica** com OCR + IA.  
 Extrai dados estruturados em JSON e os acumula em CSV para análise de dados.
@@ -8,11 +8,11 @@ Extrai dados estruturados em JSON e os acumula em CSV para análise de dados.
 ## 📁 Estrutura do Projeto
 
 ```
-energy-bill-reader/
+pdfplumber/
 ├── app.py               # Servidor Flask (API REST)
-├── ocr_utils.py         # OCR com Tesseract
+├── ocr_utils.py         # OCR com Tesseract / PDFPlumber
 ├── text_utils.py        # Extração de campos via regex
-├── refinement_utils.py  # Refinamento via Claude API (+ fallback regex)
+├── refinement_utils.py  # Refinamento via Gemini API (+ fallback regex)
 ├── export_utils.py      # Salva JSON individual + acumula CSV
 ├── storage_utils.py     # Gerencia arquivos locais
 ├── requirements.txt
@@ -66,12 +66,12 @@ O servidor sobe em `http://localhost:8080`.
 
 ---
 
-## 🔑 Configuração da Claude API (opcional)
+## 🔑 Configuração da Gemini API (opcional)
 
 Se quiser refinamento com IA (melhora muito a extração de campos ambíguos), exporte sua chave:
 
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
+export GOOGLE_API_KEY="AIza..."
 ```
 
 Sem a chave, o sistema funciona 100% offline usando apenas regex como fallback.
@@ -100,7 +100,7 @@ curl -X POST http://localhost:8080/energy-bill \
     "mes_referencia": "Janeiro/2024",
     "data_vencimento": "15/02/2024",
     "valor_total": "187.45",
-    "consumo_kwh": "342",
+    "consumo_total_kwh": "342",
     "leitura_atual": "5432",
     "leitura_anterior": "5090",
     "bandeira_tarifaria": "Verde",
@@ -132,7 +132,7 @@ import pandas as pd
 df = pd.read_csv("storage/bills_data.csv")
 
 # Consumo médio por distribuidora
-print(df.groupby("distribuidora")["consumo_kwh"].mean())
+print(df.groupby("distribuidora")["consumo_total_kwh"].mean())
 
 # Evolução do valor total ao longo do tempo
 df["data_vencimento"] = pd.to_datetime(df["data_vencimento"], dayfirst=True)
@@ -147,13 +147,13 @@ df.sort_values("data_vencimento").plot(x="data_vencimento", y="valor_total")
 Imagem da conta
       │
       ▼
-  OCR (Tesseract)
+  OCR (Tesseract / PDFPlumber)
       │
       ▼
   Extração regex (text_utils.py)
       │
       ▼
-  Refinamento IA (Claude API)
+  Refinamento IA (Gemini API)
   └─ fallback: regex adicional
       │
       ▼
@@ -178,7 +178,8 @@ Imagem da conta
 | `mes_referencia` | Mês de competência | Janeiro/2024 |
 | `data_vencimento` | Data de vencimento | 15/02/2024 |
 | `valor_total` | Valor a pagar (R$) | 187.45 |
-| `consumo_kwh` | Consumo do mês (kWh) | 342 |
+| `consumo_total_kwh` | Consumo total (Ponta + Fora + Ger) | 342 |
+| `geracao_kwh` | Valor de geração extraído | 100.00 |
 | `leitura_atual` | Leitura atual do medidor | 5432 |
 | `leitura_anterior` | Leitura anterior do medidor | 5090 |
 | `bandeira_tarifaria` | Bandeira do mês | Verde |
