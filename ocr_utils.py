@@ -14,6 +14,12 @@ try:
 except ImportError:
     HAS_OCR = False
 
+try:
+    import pdfplumber
+    HAS_PDFPLUMBER = True
+except ImportError:
+    HAS_PDFPLUMBER = False
+
 # Configuração para Windows (se o Tesseract estiver instalado no caminho padrão)
 if os.name == 'nt' and HAS_OCR:
     pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -39,6 +45,23 @@ def extract_text(file_path: str) -> str:
     try:
         # Verifica se é PDF pela extensão
         if file_path.lower().endswith(".pdf"):
+            # Tenta extração nativa com pdfplumber primeiro
+            if HAS_PDFPLUMBER:
+                try:
+                    with pdfplumber.open(file_path) as pdf:
+                        if len(pdf.pages) > 0:
+                            page = pdf.pages[0] # Foca na primeira página, que costuma ter os dados
+                            native_text = page.extract_text()
+                            
+                            # Validação simples: se extraiu bastante texto, é digital. Se não, é scan.
+                            if native_text and len(native_text.strip()) > 300:
+                                print(f"DEBUG (ocr_utils): Texto extraído via PDFPLUMBER ({len(native_text)} chars)")
+                                return native_text
+                except Exception as e:
+                    print(f"WARN (ocr_utils): Falha ao tentar ler com pdfplumber ({e}). Recorrendo ao OCR...")
+
+            # Fallback para OCR (PyMuPDF -> Tesseract)
+            print("DEBUG (ocr_utils): Tentando extração via OCR (PyMuPDF + Tesseract)...")
             import fitz  # PyMuPDF
             # Abre o PDF e pega apenas a primeira página
             doc = fitz.open(file_path)
@@ -56,6 +79,7 @@ def extract_text(file_path: str) -> str:
             doc.close()
         else:
             # Fluxo normal para imagens JPG, PNG
+            print("DEBUG (ocr_utils): Tentando extração via OCR nativo para imagem...")
             img = Image.open(file_path)
 
         img = _preprocess_image(img)
@@ -63,7 +87,7 @@ def extract_text(file_path: str) -> str:
         # Configura Tesseract para português
         custom_config = r"--oem 3 --psm 6 -l por+eng"
         text = pytesseract.image_to_string(img, config=custom_config)
-        print(f"DEBUG (ocr_utils): Texto extraído ({len(text)} chars)")
+        print(f"DEBUG (ocr_utils): Texto extraído via TESSERACT ({len(text)} chars)")
         return text
     except Exception as e:
         print(f"ERROR (ocr_utils): Falha no OCR: {e}")

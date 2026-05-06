@@ -58,9 +58,11 @@ def energy_bill():
     json_path = save_to_json(final_data, file_name)
     append_to_csv(final_data, file_name)
 
+    from storage_utils import sanitize_folder_name
+    
     # Organiza arquivos por distribuidora
-    distribuidora = final_data.get("distribuidora", "outros").lower()
-    folder = distribuidora.replace(" ", "_") if distribuidora != "None" else "outros"
+    distribuidora = final_data.get("distribuidora", "outros")
+    folder = sanitize_folder_name(distribuidora)
     move_file(file_name, f"{folder}/{file_name}")
 
     return jsonify({

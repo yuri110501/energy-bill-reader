@@ -35,6 +35,9 @@ energy-bill-reader/
 # Ubuntu/Debian
 sudo apt install tesseract-ocr tesseract-ocr-por
 
+# windows
+winget install --id=Unix.TesseractOCR
+
 # macOS
 brew install tesseract tesseract-lang
 ```

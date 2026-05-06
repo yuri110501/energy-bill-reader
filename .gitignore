@@ -6,6 +6,8 @@ venv/
 .venv/
 env/
 
+SKILL.md
+.agent/
 # Variáveis de ambiente (Chaves de API)
 .env
 
@@ -16,3 +18,7 @@ dataset/
 # Arquivos temporários do OS
 .DS_Store
 Thumbs.db
+
+# Arquivos de treinamento
+*.pdf
+*.json

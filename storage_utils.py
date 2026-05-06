@@ -29,3 +29,18 @@ def move_file(old_name: str, new_name: str) -> str:
         shutil.move(old_path, new_path)
         print(f"DEBUG (storage_utils): Arquivo movido de {old_path} para {new_path}")
     return new_path
+
+def sanitize_folder_name(name: str) -> str:
+    """
+    Remove acentos, caracteres especiais e espaços de um nome de pasta.
+    Essencial para garantir a integridade dos caminhos no sistema de arquivos.
+    """
+    import unicodedata
+    import re
+    if not name or name == "None":
+        return "outros"
+    # Normaliza e remove acentos
+    name = unicodedata.normalize("NFKD", name).encode("ASCII", "ignore").decode("utf-8")
+    # Substitui espaços e outros caracteres por '_'
+    name = re.sub(r"[^\w\s-]", "", name).strip().lower()
+    return re.sub(r"[-\s]+", "_", name)
