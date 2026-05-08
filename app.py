@@ -82,6 +82,34 @@ def list_bills():
     return jsonify({"total": len(df), "data": df.to_dict(orient="records")}), 200
 
 
+@app.route("/batch-process", methods=["POST"])
+def batch_process():
+    """
+    Processa todos os arquivos de uma pasta informada via JSON.
+    Ex: { "folder_path": "C:/contas", "output_file": "meu_batch.txt" }
+    """
+    data = request.get_json()
+    if not data or "folder_path" not in data:
+        return jsonify({"error": "Caminho da pasta (folder_path) não informado"}), 400
+    
+    folder_path = data["folder_path"]
+    output_file = data.get("output_file", os.path.join(STORAGE_DIR, "batch_results.txt"))
+    
+    if not os.path.isdir(folder_path):
+        return jsonify({"error": f"Caminho '{folder_path}' não é um diretório válido"}), 400
+    
+    from batch_processor import run_batch
+    
+    # Executa o processamento em lote
+    run_batch(folder_path, output_file)
+    
+    return jsonify({
+        "message": "Processamento em lote concluído com sucesso",
+        "folder_path": folder_path,
+        "output_file": output_file
+    }), 200
+
+
 if __name__ == "__main__":
     os.makedirs(STORAGE_DIR, exist_ok=True)
     os.makedirs(os.path.join(STORAGE_DIR, "json"), exist_ok=True)

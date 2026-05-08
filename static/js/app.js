@@ -41,6 +41,17 @@ const els = {
   statDistributors: $('#stat-distributors'),
   toast: $('#toast'),
   toastMessage: $('#toast-message'),
+  // Batch elements
+  navBatch: $('#nav-batch'),
+  viewBatch: $('#view-batch'),
+  batchFolderPath: $('#batch-folder-path'),
+  batchOutputFile: $('#batch-output-file'),
+  btnStartBatch: $('#btn-start-batch'),
+  batchStatusContainer: $('#batch-status-container'),
+  batchStatusMessage: $('#batch-status-message'),
+  batchSuccessContainer: $('#batch-success-container'),
+  batchSuccessMessage: $('#batch-success-message'),
+  btnBatchReset: $('#btn-batch-reset'),
 };
 
 let selectedFile = null;
@@ -80,11 +91,15 @@ function switchView(view) {
     els.navHistory.classList.add('active');
     els.viewHistory.classList.add('active');
     loadHistory();
+  } else if (view === 'batch') {
+    els.navBatch.classList.add('active');
+    els.viewBatch.classList.add('active');
   }
 }
 
 els.navUpload.addEventListener('click', () => switchView('upload'));
 els.navHistory.addEventListener('click', () => switchView('history'));
+els.navBatch.addEventListener('click', () => switchView('batch'));
 
 // ===== File Upload =====
 els.uploadZone.addEventListener('click', () => els.fileInput.click());
@@ -373,4 +388,52 @@ function formatFileSize(bytes) {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// ===== Batch Processing =====
+els.btnStartBatch.addEventListener('click', startBatchProcessing);
+els.btnBatchReset.addEventListener('click', resetBatchView);
+
+async function startBatchProcessing() {
+  const folderPath = els.batchFolderPath.value.trim();
+  const outputFile = els.batchOutputFile.value.trim();
+
+  if (!folderPath) {
+    showToast('Por favor, informe o caminho da pasta.');
+    return;
+  }
+
+  // UI States
+  $('.batch-card').classList.add('hidden');
+  els.batchStatusContainer.classList.remove('hidden');
+  els.batchSuccessContainer.classList.add('hidden');
+
+  try {
+    const response = await fetch('/batch-process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folder_path: folderPath, output_file: outputFile })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.error || 'Erro no processamento');
+
+    els.batchStatusContainer.classList.add('hidden');
+    els.batchSuccessContainer.classList.remove('hidden');
+    els.batchSuccessMessage.textContent = `${data.message}. Os resultados estão em: ${data.output_file}`;
+    showToast('Processamento concluído!');
+    loadHistory(); // Atualiza histórico se novos arquivos foram processados
+  } catch (err) {
+    $('.batch-card').classList.remove('hidden');
+    els.batchStatusContainer.classList.add('hidden');
+    showToast(err.message);
+  }
+}
+
+function resetBatchView() {
+  $('.batch-card').classList.remove('hidden');
+  els.batchStatusContainer.classList.add('hidden');
+  els.batchSuccessContainer.classList.add('hidden');
+  els.batchFolderPath.value = '';
 }

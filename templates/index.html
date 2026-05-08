@@ -26,6 +26,10 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
                 Histórico
             </button>
+            <button class="nav-btn" data-view="batch" id="nav-batch">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Processar Lote
+            </button>
         </div>
     </nav>
 
@@ -227,6 +231,51 @@
                         <!-- Populated by JS -->
                     </tbody>
                 </table>
+            </div>
+        </section>
+
+        <!-- ===== BATCH VIEW ===== -->
+        <section class="view" id="view-batch">
+            <div class="hero-section">
+                <h1 class="hero-title">Processamento em <span class="gradient-text">Lote</span></h1>
+                <p class="hero-subtitle">Informe o caminho de uma pasta local para ler todas as contas de uma vez</p>
+            </div>
+
+            <div class="upload-container">
+                <div class="batch-card">
+                    <div class="form-group">
+                        <label for="batch-folder-path">Caminho da Pasta Local</label>
+                        <input type="text" id="batch-folder-path" placeholder="Ex: C:\MeusDocumentos\Contas" class="batch-input">
+                        <p class="input-hint">O sistema irá ler todos os arquivos PDF e Imagens desta pasta.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="batch-output-file">Nome do Arquivo de Saída (TXT)</label>
+                        <input type="text" id="batch-output-file" value="batch_results.txt" class="batch-input">
+                    </div>
+
+                    <button class="btn-primary w-full" id="btn-start-batch">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        Iniciar Processamento
+                    </button>
+                </div>
+
+                <!-- Batch Progress -->
+                <div class="batch-status-container hidden" id="batch-status-container">
+                    <div class="processing-spinner"></div>
+                    <p id="batch-status-message">Processando arquivos...</p>
+                    <p class="batch-hint">Isso pode levar alguns minutos dependendo da quantidade de arquivos.</p>
+                </div>
+
+                <!-- Batch Success -->
+                <div class="batch-success-container hidden" id="batch-success-container">
+                    <div class="success-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    </div>
+                    <h3>Processamento Concluído!</h3>
+                    <p id="batch-success-message"></p>
+                    <button class="btn-secondary" id="btn-batch-reset">Processar Outra Pasta</button>
+                </div>
             </div>
         </section>
     </main>
