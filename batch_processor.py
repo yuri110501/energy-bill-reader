@@ -5,45 +5,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from ocr_utils import extract_text
-from text_utils import preprocess_text, extract_bill_data, validate_cpf_cnpj
-from refinement_utils import refine_data_local, replace_null_with_none
+from services.bill_service import BillService
 
 def process_file(file_path):
     """
-    Processa um único arquivo através do pipeline completo.
+    Processa um único arquivo através do pipeline completo da camada de serviço.
     """
     print(f"DEBUG (batch): Processando {file_path}...")
     try:
-        # 1. OCR
-        extracted_text = extract_text(file_path)
-        if not extracted_text.strip():
-            print(f"WARN (batch): Nenhum texto extraído de {file_path}")
-            return None
-            
-        processed_text = preprocess_text(extracted_text)
-        
-        # 2. Extração via Regex
-        bill_data_raw = extract_bill_data(extracted_text)
-        bill_data_processed = extract_bill_data(processed_text)
-        
-        # Combina resultados
-        bill_data = {
-            key: bill_data_raw.get(key) or bill_data_processed.get(key)
-            for key in bill_data_raw
-        }
-
-        # 3. Refinamento via IA / Fallback
-        refined_data = refine_data_local(bill_data, extracted_text, processed_text)
-        
-        # 4. Validação
-        if not validate_cpf_cnpj(refined_data.get("cpf_cnpj_titular", "")):
-            refined_data["cpf_cnpj_titular"] = "CPF/CNPJ inválido/não encontrado"
-
-        result = replace_null_with_none(refined_data)
-        result["_file_name"] = os.path.basename(file_path)
-        return result
-        
+        # A camada de serviço retorna um dicionário validado e salva no repository
+        final_data, _ = BillService.process_file(file_path)
+        final_data["_file_name"] = os.path.basename(file_path)
+        return final_data
     except Exception as e:
         print(f"ERROR (batch): Falha ao processar {file_path}: {e}")
         return None
@@ -60,7 +33,6 @@ def run_batch(folder_path, output_file="batch_results.txt"):
     extensions = ["*.pdf", "*.jpg", "*.jpeg", "*.png"]
     files = []
     for ext in extensions:
-        # Busca recursiva simples ou apenas na pasta? Usuário disse "na pasta".
         files.extend(glob.glob(os.path.join(folder_path, ext)))
     
     if not files:
@@ -69,28 +41,23 @@ def run_batch(folder_path, output_file="batch_results.txt"):
 
     print(f"INFO: Iniciando processamento de {len(files)} arquivos...")
     
-    results = []
-    for f in files:
-        res = process_file(f)
-        if res:
-            results.append(res)
-
-    # Salva todos os resultados em um único arquivo TXT (um JSON por linha)
-    try:
-        with open(output_file, "w", encoding="utf-8") as out:
-            for item in results:
-                line = json.dumps(item, ensure_ascii=False)
+    # Processa um por vez e escreve imediatamente no arquivo (melhor para debug em lotes grandes)
+    with open(output_file, "w", encoding="utf-8") as out:
+        success_count = 0
+        for f in files:
+            res = process_file(f)
+            if res:
+                line = json.dumps(res, ensure_ascii=False)
                 out.write(line + "\n")
-        
-        print(f"\n✅ SUCESSO: {len(results)} arquivos processados com êxito.")
-        print(f"📂 Resultados salvos em: {output_file}")
-    except Exception as e:
-        print(f"ERROR: Falha ao salvar arquivo de saída: {e}")
+                out.flush()  # Garante que seja salvo no disco em tempo real
+                success_count += 1
+                
+        print(f"\n[SUCESSO]: {success_count} arquivos processados com exito.")
+        print(f"[Resultados] consolidados em: {output_file}")
 
 if __name__ == "__main__":
     import sys
     
-    # Adota o padrão TDD de verificação de argumentos
     if len(sys.argv) < 2:
         print("\n🚀 BATCH PROCESSOR - Energy Bill Reader")
         print("-" * 40)
@@ -100,3 +67,4 @@ if __name__ == "__main__":
         folder = sys.argv[1]
         output = sys.argv[2] if len(sys.argv) > 2 else "batch_results.txt"
         run_batch(folder, output)
+

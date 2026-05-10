@@ -1,7 +1,8 @@
 """
-storage_utils.py
-----------------
+storage.py
+----------
 Gerencia o armazenamento local dos arquivos de contas de energia.
+Unifica storage_utils.py (IO de arquivos) nesta camada de infraestrutura.
 """
 
 import os
@@ -16,7 +17,7 @@ def save_file(file_name: str, content: bytes) -> str:
     file_path = os.path.join(STORAGE_DIR, file_name)
     with open(file_path, "wb") as f:
         f.write(content)
-    print(f"DEBUG (storage_utils): Arquivo salvo em {file_path}")
+    print(f"DEBUG (storage): Arquivo salvo em {file_path}")
     return file_path
 
 
@@ -27,20 +28,5 @@ def move_file(old_name: str, new_name: str) -> str:
     os.makedirs(os.path.dirname(new_path), exist_ok=True)
     if os.path.exists(old_path):
         shutil.move(old_path, new_path)
-        print(f"DEBUG (storage_utils): Arquivo movido de {old_path} para {new_path}")
+        print(f"DEBUG (storage): Arquivo movido de {old_path} para {new_path}")
     return new_path
-
-def sanitize_folder_name(name: str) -> str:
-    """
-    Remove acentos, caracteres especiais e espaços de um nome de pasta.
-    Essencial para garantir a integridade dos caminhos no sistema de arquivos.
-    """
-    import unicodedata
-    import re
-    if not name or name == "None":
-        return "outros"
-    # Normaliza e remove acentos
-    name = unicodedata.normalize("NFKD", name).encode("ASCII", "ignore").decode("utf-8")
-    # Substitui espaços e outros caracteres por '_'
-    name = re.sub(r"[^\w\s-]", "", name).strip().lower()
-    return re.sub(r"[-\s]+", "_", name)

@@ -8,7 +8,7 @@ Extrai dados estruturados em JSON e os acumula em CSV para análise de dados.
 ## 📁 Estrutura do Projeto
 
 ```
-pdfplumber/
+energy-bill-reader/
 ├── app.py               # Servidor Flask (API REST)
 ├── ocr_utils.py         # OCR com Tesseract / PDFPlumber
 ├── text_utils.py        # Extração de campos via regex

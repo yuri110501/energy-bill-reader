@@ -3,11 +3,10 @@ from dotenv import load_dotenv
 load_dotenv()  # Carrega as variáveis do .env
 
 from flask import Flask, request, jsonify, render_template
-from storage_utils import save_file, move_file
-from ocr_utils import extract_text
-from text_utils import preprocess_text, extract_bill_data, validate_cpf_cnpj
-from refinement_utils import refine_data_local, replace_null_with_none
-from export_utils import save_to_json, append_to_csv
+
+from infrastructure.storage import save_file, move_file
+from services.bill_service import BillService
+from utils.validators import validate_cpf_cnpj, sanitize_folder_name
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB max upload
@@ -34,52 +33,38 @@ def energy_bill():
     content = file.read()
     saved_path = save_file(file_name, content)
 
-    # Extrai texto via OCR local (Tesseract)
-    extracted_text = extract_text(saved_path)
-    processed_text = preprocess_text(extracted_text)
+    try:
+        # A Camada de Serviço orquestra tudo (OCR -> Regex -> Gemini -> DB/JSON)
+        final_data, json_path = BillService.process_file(saved_path)
 
-    # Extrai campos com regex (texto bruto + processado)
-    bill_data_raw = extract_bill_data(extracted_text)
-    bill_data_processed = extract_bill_data(processed_text)
-    bill_data = {
-        key: bill_data_raw.get(key) or bill_data_processed.get(key)
-        for key in bill_data_raw
-    }
+        if not validate_cpf_cnpj(final_data.get("cpf_cnpj_titular", "")):
+            final_data["cpf_cnpj_titular"] = "CPF/CNPJ inválido/não encontrado"
 
-    # Refinamento via IA (Claude API) com fallback local por regex
-    refined_data = refine_data_local(bill_data, extracted_text, processed_text)
+        # Organiza arquivos por distribuidora (move da raiz do storage para subpasta)
+        distribuidora = final_data.get("distribuidora", "outros")
+        folder = sanitize_folder_name(distribuidora)
+        move_file(file_name, f"{folder}/{file_name}")
 
-    if not validate_cpf_cnpj(refined_data.get("cpf_cnpj_titular", "")):
-        refined_data["cpf_cnpj_titular"] = "CPF/CNPJ inválido/não encontrado"
+        return jsonify({
+            "dados_extraidos": final_data,
+            "json_salvo_em": json_path,
+        }), 200
 
-    final_data = replace_null_with_none(refined_data)
-
-    # Persiste: JSON individual + linha no CSV acumulado
-    json_path = save_to_json(final_data, file_name)
-    append_to_csv(final_data, file_name)
-
-    from storage_utils import sanitize_folder_name
-    
-    # Organiza arquivos por distribuidora
-    distribuidora = final_data.get("distribuidora", "outros")
-    folder = sanitize_folder_name(distribuidora)
-    move_file(file_name, f"{folder}/{file_name}")
-
-    return jsonify({
-        "dados_extraidos": final_data,
-        "json_salvo_em": json_path,
-    }), 200
+    except Exception as e:
+        print(f"ERROR (app): {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/bills", methods=["GET"])
 def list_bills():
-    """Lista todas as contas já processadas lendo o CSV acumulado."""
-    import pandas as pd
-    csv_path = os.path.join(STORAGE_DIR, "bills_data.csv")
-    if not os.path.exists(csv_path):
-        return jsonify({"message": "Nenhuma conta processada ainda.", "data": []}), 200
-    df = pd.read_csv(csv_path)
-    return jsonify({"total": len(df), "data": df.to_dict(orient="records")}), 200
+    """Lista todas as contas já processadas."""
+    try:
+        bills = BillService.get_all_bills()
+        if not bills:
+            return jsonify({"message": "Nenhuma conta processada ainda.", "data": []}), 200
+        return jsonify({"total": len(bills), "data": bills}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/batch-process", methods=["POST"])

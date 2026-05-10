@@ -1,57 +1,16 @@
 """
-refinement_utils.py
--------------------
-Refina os dados extraídos por regex usando o Gemini (Google AI).
-Se a chave GOOGLE_API_KEY não estiver configurada, usa
-fallback local (regex adicional + regra de negócio) sem chamar API externa.
+refinement.py
+-------------
+Refina os dados extraídos por regex usando IA (Gemini) e regras de negócio locais.
+Utiliza os modelos Pydantic da camada core para garantir a estrutura correta.
 """
 
 import os
 import json
 import re
+from typing import Dict, Any
 
-BILL_FIELDS = [
-    "distribuidora",
-    "cpf_cnpj_titular",
-    "endereco_titular",
-    "numero_instalacao",
-    "numero_fatura",
-    "mes_referencia",
-    "data_vencimento",
-    "valor_total",
-    "consumo_total_kwh",
-    "geracao_kwh",
-    "leitura_atual",
-    "leitura_anterior",
-    "bandeira_tarifaria",
-    "tipo_fornecimento",
-    "classe_consumidor",
-    "tarifa_rs_kwh",
-    "demanda_ativa",
-    "demanda_reativa_excedente",
-    "consumo_ativo_na_ponta_tusd",
-    "consumo_ativo_fora_ponta_tusd",
-    "consumo_ativo_na_ponta_te",
-    "consumo_ativo_fora_ponta_te",
-    "consumo_reativo_exc_na_ponta",
-    "consumo_reativo_exc_fora_ponta",
-    "codigo_cliente",
-    "data_leitura_anterior",
-    "data_leitura_atual",
-    "numero_dias_faturamento",
-    "demanda_contratada",
-    "classificacao_detalhada",
-    "demanda_ativa_preco_unitario",
-    "demanda_reativa_excedente_preco_unitario",
-    "consumo_ativo_na_ponta_tusd_preco_unitario",
-    "consumo_ativo_fora_ponta_tusd_preco_unitario",
-    "consumo_ativo_na_ponta_te_preco_unitario",
-    "consumo_ativo_fora_ponta_te_preco_unitario",
-    "consumo_reativo_exc_na_ponta_preco_unitario",
-    "consumo_reativo_exc_fora_ponta_preco_unitario",
-]
-
-DEFAULT_OUTPUT = {field: "None" for field in BILL_FIELDS}
+from core.models import BillData
 
 # Modelo configurável via variável de ambiente (padrão: gemini-2.5-flash)
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
@@ -62,50 +21,15 @@ try:
 except ImportError:
     HAS_GEMINI = False
 
+# Usa o dicionário flat gerado pelo Pydantic para criar o template de prompt
+_dummy_bill = BillData().to_flat_dict()
+_json_template_str = json.dumps(_dummy_bill, indent=2)
+
 PROMPT_TEMPLATE = (
     "Você é um especialista em leitura de contas de energia elétrica brasileiras.\n"
     "Analise os dados extraídos abaixo e o texto original da conta.\n"
     "Retorne APENAS um JSON válido com exatamente estes campos (sem texto fora do JSON):\n\n"
-    "{\n"
-    '  "distribuidora": "None",\n'
-    '  "cpf_cnpj_titular": "None",\n'
-    '  "endereco_titular": "None",\n'
-    '  "numero_instalacao": "None",\n'
-    '  "numero_fatura": "None",\n'
-    '  "mes_referencia": "None",\n'
-    '  "data_vencimento": "None",\n'
-    '  "valor_total": "None",\n'
-    '  "consumo_total_kwh": "None",\n'
-    '  "geracao_kwh": "None",\n'
-    '  "leitura_atual": "None",\n'
-    '  "leitura_anterior": "None",\n'
-    '  "bandeira_tarifaria": "None",\n'
-    '  "tipo_fornecimento": "None",\n'
-    '  "classe_consumidor": "None",\n'
-    '  "tarifa_rs_kwh": "None",\n'
-    '  "demanda_ativa": "None",\n'
-    '  "demanda_reativa_excedente": "None",\n'
-    '  "consumo_ativo_na_ponta_tusd": "None",\n'
-    '  "consumo_ativo_fora_ponta_tusd": "None",\n'
-    '  "consumo_ativo_na_ponta_te": "None",\n'
-    '  "consumo_ativo_fora_ponta_te": "None",\n'
-    '  "consumo_reativo_exc_na_ponta": "None",\n'
-    '  "consumo_reativo_exc_fora_ponta": "None",\n'
-    '  "codigo_cliente": "None",\n'
-    '  "data_leitura_anterior": "None",\n'
-    '  "data_leitura_atual": "None",\n'
-    '  "numero_dias_faturamento": "None",\n'
-    '  "demanda_contratada": "None",\n'
-    '  "classificacao_detalhada": "None",\n'
-    '  "demanda_ativa_preco_unitario": "None",\n'
-    '  "demanda_reativa_excedente_preco_unitario": "None",\n'
-    '  "consumo_ativo_na_ponta_tusd_preco_unitario": "None",\n'
-    '  "consumo_ativo_fora_ponta_tusd_preco_unitario": "None",\n'
-    '  "consumo_ativo_na_ponta_te_preco_unitario": "None",\n'
-    '  "consumo_ativo_fora_ponta_te_preco_unitario": "None",\n'
-    '  "consumo_reativo_exc_na_ponta_preco_unitario": "None",\n'
-    '  "consumo_reativo_exc_fora_ponta_preco_unitario": "None"\n'
-    "}\n\n"
+    f"{_json_template_str}\n\n"
     "Regras de formatação:\n"
     "- Valores numéricos: use apenas o número com ponto como separador decimal (ex: '127.45')\n"
     "- Consumos e Demandas: capture a QUANTIDADE na primeira coluna numérica (ex: 200.00).\n"
@@ -127,7 +51,7 @@ PROMPT_TEMPLATE = (
 )
 
 
-def build_prompt(bill_data: dict, raw_text: str) -> str:
+def build_prompt(bill_data: Dict[str, Any], raw_text: str) -> str:
     return (
         PROMPT_TEMPLATE
         + json.dumps(bill_data, indent=2, ensure_ascii=False)
@@ -137,23 +61,29 @@ def build_prompt(bill_data: dict, raw_text: str) -> str:
     )
 
 
-def refine_data_local(bill_data: dict, raw_text: str, processed_text: str) -> dict:
+def refine_data(bill_data: Dict[str, Any], raw_text: str, processed_text: str) -> BillData:
     """
-    Tenta refinar via Gemini API. Se não estiver configurada, usa fallback regex.
+    Coordena o refinamento. Tenta a API primeiro; se falhar ou ausente, usa fallback.
+    Retorna a instância validada do modelo BillData.
     """
     api_key = os.environ.get("GOOGLE_API_KEY")
 
+    refined_dict = None
     if HAS_GEMINI and api_key:
         try:
-            return _refine_with_gemini(bill_data, raw_text, api_key)
+            refined_dict = _refine_with_gemini(bill_data, raw_text, api_key)
         except Exception as exc:
             print(f"DEBUG (refinement): Gemini API falhou, usando fallback: {exc}")
 
-    return _refine_fallback(bill_data, raw_text, processed_text)
+    if not refined_dict:
+        refined_dict = _refine_fallback(bill_data, raw_text, processed_text)
+
+    # Converte o dicionário final para o modelo Pydantic para garantir consistência
+    return BillData.from_raw_dict(refined_dict)
 
 
-def _refine_with_gemini(bill_data: dict, raw_text: str, api_key: str) -> dict:
-    """Chama o Gemini (google-genai SDK) para corrigir e completar os campos extraídos."""
+def _refine_with_gemini(bill_data: Dict[str, Any], raw_text: str, api_key: str) -> Dict[str, Any]:
+    """Chama o Gemini para corrigir e completar os campos extraídos."""
     client = genai.Client(api_key=api_key)
     prompt = build_prompt(bill_data, raw_text)
 
@@ -167,9 +97,8 @@ def _refine_with_gemini(bill_data: dict, raw_text: str, api_key: str) -> dict:
     return _parse_json_response(raw_response)
 
 
-def _parse_json_response(raw: str) -> dict:
-    """Extrai o JSON da resposta da IA e valida os campos."""
-    # Remove blocos de código markdown que o modelo possa retornar
+def _parse_json_response(raw: str) -> Dict[str, Any]:
+    """Extrai o JSON da resposta da IA."""
     raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
     raw = raw.replace("```", "").strip()
 
@@ -178,25 +107,19 @@ def _parse_json_response(raw: str) -> dict:
 
     try:
         data = json.loads(cleaned)
+        return data
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"JSON inválido retornado pela IA: {exc}\n{cleaned}")
 
-    for field in BILL_FIELDS:
-        if field not in data:
-            data[field] = "None"
 
-    return {field: _normalize(data.get(field)) for field in BILL_FIELDS}
-
-
-def _refine_fallback(bill_data: dict, raw_text: str, processed_text: str) -> dict:
+def _refine_fallback(bill_data: Dict[str, Any], raw_text: str, processed_text: str) -> Dict[str, Any]:
     """
-    Fallback 100% local: combina os dados já extraídos por regex
-    com tentativas extras de padrões alternativos.
-    Aplica regra de negócio: consumo total = TE + Geração.
+    Fallback local: combina os dados do regex com padrões alternativos.
     """
-    result = DEFAULT_OUTPUT.copy()
-    for field in BILL_FIELDS:
-        result[field] = _normalize(bill_data.get(field))
+    result = BillData().to_flat_dict()
+    for field in result.keys():
+        val = bill_data.get(field)
+        result[field] = str(val).strip() if val else "None"
 
     extras = {
         "distribuidora": [
@@ -220,10 +143,8 @@ def _refine_fallback(bill_data: dict, raw_text: str, processed_text: str) -> dic
         ],
         "mes_referencia": [
             r"((?:janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)[\/\s]*[0-9]{4})",
-            # Padrão estrito: MM de 01-12 e ano começando com 20xx
             r"\b((?:0[1-9]|1[0-2])\/20[0-9]{2})\b",
         ],
-        # Leituras do medidor: captura números grandes com vírgula decimal
         "leitura_anterior": [
             r"(?:leitura\s+anterior|medida\s+anterior)[:\s]*([\d\.]+[,\.]\d{2})",
             r"(?:leitura\s+anterior|medida\s+anterior)[:\s]*([\d]+)",
@@ -240,14 +161,12 @@ def _refine_fallback(bill_data: dict, raw_text: str, processed_text: str) -> dic
         "consumo_ativo_fora_ponta_te": [r"Consumo\s+Ativo\s+Fora\s+Ponta\(kWh\)-TE[\s]*([\d\.,]+)"],
         "consumo_reativo_exc_na_ponta": [r"Consumo\s+Reativo\s+Exc\.\s+Na\s+Ponta\(kVARh\)[\s]*([\d\.,]+)"],
         "consumo_reativo_exc_fora_ponta": [r"Consumo\s+Reativo\s+Exc\.\s+Fora\s+Ponta\(kVARh\)[\s]*([\d\.,]+)"],
-        # Novos campos administrativos
         "codigo_cliente": [r"(?:c[oó]digo\s+do\s+cliente)[:\s]*(\d+)"],
         "data_leitura_anterior": [r"(?:leitura\s+anterior)[:\s]*([0-9]{2}\/[0-9]{2}\/[0-9]{4})"],
         "data_leitura_atual": [r"(?:leitura\s+atual)[:\s]*([0-9]{2}\/[0-9]{2}\/[0-9]{4})"],
         "numero_dias_faturamento": [r"(?:n[º°]?\s+de\s+dias)[:\s]*(\d+)"],
         "demanda_contratada": [r"(?:demanda\s+contratada)[:\s]*([\d\.,]+)"],
         "classificacao_detalhada": [r"(?:classifica[çc][ãa]o)[:\s]*([A-Za-z0-9\-\s]+)(?:\n|\r|$)"],
-        # Preços Unitários
         "demanda_ativa_preco_unitario": [r"Demanda\s+Ativa\(kW\)[^\d]*(?:[\d\.,]+)[\s]+([\d\.,]+)"],
         "demanda_reativa_excedente_preco_unitario": [r"Demanda\s+Reativa\s+Excedente\.?\(kVAR\)[^\d]*(?:[\d\.,]+)[\s]+([\d\.,]+)"],
         "consumo_ativo_na_ponta_tusd_preco_unitario": [r"Consumo\s+Ativo\s+Na\s+Ponta\(kWh\)-\s*TUSD[^\d]*(?:[\d\.,]+)[\s]+([\d\.,]+)"],
@@ -258,58 +177,38 @@ def _refine_fallback(bill_data: dict, raw_text: str, processed_text: str) -> dic
         "consumo_reativo_exc_fora_ponta_preco_unitario": [r"Consumo\s+Reativo\s+Exc\.\s+Fora\s+Ponta\(kVARh\)[^\d]*(?:[\d\.,]+)[\s]+([\d\.,]+)"],
     }
 
+    def _find_fallback(pattern: str, text: str):
+        if not text: return None
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip() if match.lastindex else match.group(0).strip()
+        return None
 
     for field, patterns in extras.items():
-        if result[field] == "None":
+        if result.get(field, "None") == "None":
             for p in patterns:
-                val = _find(p, raw_text) or _find(p, processed_text)
+                val = _find_fallback(p, raw_text) or _find_fallback(p, processed_text)
                 if val:
-                    result[field] = _normalize(val)
+                    result[field] = val
                     break
 
-    # --- Regra de negócio: calcular consumo total ---
-    if result["consumo_total_kwh"] == "None":
+    # Regra de negócio: calcular consumo total
+    if result.get("consumo_total_kwh", "None") == "None":
         try:
             def _to_float(val: str) -> float:
+                if not val or val == "None": return 0.0
                 val = val.strip().replace(".", "").replace(",", ".")
-                return float(val) if val and val != "None" else 0.0
+                return float(val)
 
-            ponta = _to_float(result["consumo_ativo_na_ponta_te"])
-            fora_ponta = _to_float(result["consumo_ativo_fora_ponta_te"])
-            geracao = _to_float(result["geracao_kwh"])
+            ponta = _to_float(result.get("consumo_ativo_na_ponta_te", "0"))
+            fora_ponta = _to_float(result.get("consumo_ativo_fora_ponta_te", "0"))
+            geracao = _to_float(result.get("geracao_kwh", "0"))
             
             total = ponta + fora_ponta + geracao
             if total > 0:
                 result["consumo_total_kwh"] = f"{total:.2f}"
-                print(f"DEBUG (refinement): consumo_total_kwh calculado = {total:.2f} "
-                      f"(Ponta: {ponta} + Fora: {fora_ponta} + Ger: {geracao})")
+                print(f"DEBUG (refinement): consumo_total_kwh calculado = {total:.2f}")
         except:
             pass
 
     return result
-
-
-def _find(pattern: str, text: str):
-    if not text:
-        return None
-    match = re.search(pattern, text, re.IGNORECASE)
-    if match:
-        return match.group(1).strip() if match.lastindex else match.group(0).strip()
-    return None
-
-
-def replace_null_with_none(value):
-    if isinstance(value, dict):
-        return {k: replace_null_with_none(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [replace_null_with_none(i) for i in value]
-    return "None" if value is None else value
-
-
-def _normalize(value) -> str:
-    if value is None:
-        return "None"
-    if isinstance(value, str):
-        value = value.strip()
-        return value if value else "None"
-    return str(value)

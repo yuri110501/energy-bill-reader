@@ -1,8 +1,8 @@
 """
-ocr_utils.py
-------------
-Extrai texto de imagens de contas de energia usando Tesseract OCR.
-Aplica pré-processamento de imagem para melhorar a acurácia.
+ocr.py
+------
+Motor de OCR para extração de texto de PDFs e imagens.
+Movido de ocr_utils.py — responsabilidade única: converter arquivo em texto.
 """
 
 import os
@@ -24,62 +24,52 @@ except ImportError:
 if os.name == 'nt' and HAS_OCR:
     pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
+
 def extract_text(file_path: str) -> str:
     """
-    Extrai texto de uma imagem via OCR.
-
-    Args:
-        file_path: Caminho para o arquivo de imagem (JPG, PNG, PDF).
-
-    Returns:
-        Texto extraído como string.
+    Extrai texto de um arquivo (PDF ou imagem).
+    Estratégia: pdfplumber (nativo) → PyMuPDF+Tesseract (OCR) → imagem direta.
     """
     if not HAS_OCR:
-        print("WARN (ocr_utils): pytesseract/Pillow não instalados. Retornando texto vazio.")
+        print("WARN (ocr): pytesseract/Pillow não instalados. Retornando texto vazio.")
         return ""
 
     if not os.path.exists(file_path):
-        print(f"WARN (ocr_utils): Arquivo não encontrado: {file_path}")
+        print(f"WARN (ocr): Arquivo não encontrado: {file_path}")
         return ""
 
     try:
-        # Verifica se é PDF pela extensão
         if file_path.lower().endswith(".pdf"):
             # Tenta extração nativa com pdfplumber primeiro
             if HAS_PDFPLUMBER:
                 try:
                     with pdfplumber.open(file_path) as pdf:
                         if len(pdf.pages) > 0:
-                            page = pdf.pages[0] # Foca na primeira página, que costuma ter os dados
+                            page = pdf.pages[0]
                             native_text = page.extract_text()
-                            
-                            # Validação simples: se extraiu bastante texto, é digital. Se não, é scan.
+                            # Se extraiu bastante texto, é PDF digital (não scan)
                             if native_text and len(native_text.strip()) > 300:
-                                print(f"DEBUG (ocr_utils): Texto extraído via PDFPLUMBER ({len(native_text)} chars)")
+                                print(f"DEBUG (ocr): Texto extraído via PDFPLUMBER ({len(native_text)} chars)")
                                 return native_text
                 except Exception as e:
-                    print(f"WARN (ocr_utils): Falha ao tentar ler com pdfplumber ({e}). Recorrendo ao OCR...")
+                    print(f"WARN (ocr): Falha ao tentar ler com pdfplumber ({e}). Recorrendo ao OCR...")
 
             # Fallback para OCR (PyMuPDF -> Tesseract)
-            print("DEBUG (ocr_utils): Tentando extração via OCR (PyMuPDF + Tesseract)...")
+            print("DEBUG (ocr): Tentando extração via OCR (PyMuPDF + Tesseract)...")
             import fitz  # PyMuPDF
-            # Abre o PDF e pega apenas a primeira página
             doc = fitz.open(file_path)
             if len(doc) == 0:
                 return ""
             page = doc.load_page(0)
-            
-            # Converte a página para imagem (aumentamos a resolução com zoom = 2)
+            # Aumenta a resolução com zoom = 2
             pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-            
-            # Converte os bytes do pixmap para objeto Image do Pillow
             from io import BytesIO
             img_data = pix.tobytes("png")
             img = Image.open(BytesIO(img_data))
             doc.close()
         else:
             # Fluxo normal para imagens JPG, PNG
-            print("DEBUG (ocr_utils): Tentando extração via OCR nativo para imagem...")
+            print("DEBUG (ocr): Tentando extração via OCR nativo para imagem...")
             img = Image.open(file_path)
 
         img = _preprocess_image(img)
@@ -87,36 +77,26 @@ def extract_text(file_path: str) -> str:
         # Configura Tesseract para português
         custom_config = r"--oem 3 --psm 6 -l por+eng"
         text = pytesseract.image_to_string(img, config=custom_config)
-        print(f"DEBUG (ocr_utils): Texto extraído via TESSERACT ({len(text)} chars)")
+        print(f"DEBUG (ocr): Texto extraído via TESSERACT ({len(text)} chars)")
         return text
     except Exception as e:
-        print(f"ERROR (ocr_utils): Falha no OCR: {e}")
+        print(f"ERROR (ocr): Falha no OCR: {e}")
         return ""
 
 
-def _preprocess_image(img):
+def _preprocess_image(img: Image.Image) -> Image.Image:
     """
     Aplica melhorias na imagem para aumentar a qualidade do OCR:
-    - Converte para escala de cinza
-    - Aumenta contraste
-    - Aplica nitidez
-    - Redimensiona se muito pequena
+    - Escala de cinza, aumento de contraste, nitidez, redimensionamento.
     """
-    # Converte para RGB se necessário
     if img.mode not in ("RGB", "L"):
         img = img.convert("RGB")
 
-    # Escala de cinza
     img = img.convert("L")
-
-    # Aumenta contraste
     enhancer = ImageEnhance.Contrast(img)
     img = enhancer.enhance(2.0)
-
-    # Nitidez
     img = img.filter(ImageFilter.SHARPEN)
 
-    # Redimensiona se muito pequena (melhora OCR)
     min_width = 1500
     if img.width < min_width:
         ratio = min_width / img.width

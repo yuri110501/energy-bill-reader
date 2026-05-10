@@ -68,7 +68,7 @@ const FIELD_LABELS = {
   mes_referencia: 'Mês Referência',
   data_vencimento: 'Vencimento',
   valor_total: 'Valor Total (R$)',
-  consumo_kwh: 'Consumo (kWh)',
+  consumo_total_kwh: 'Consumo (kWh)',
   leitura_atual: 'Leitura Atual',
   leitura_anterior: 'Leitura Anterior',
   bandeira_tarifaria: 'Bandeira Tarifária',
@@ -77,7 +77,7 @@ const FIELD_LABELS = {
   tarifa_rs_kwh: 'Tarifa (R$/kWh)',
 };
 
-const HIGHLIGHT_FIELDS = ['valor_total', 'consumo_kwh', 'distribuidora'];
+const HIGHLIGHT_FIELDS = ['valor_total', 'consumo_total_kwh', 'distribuidora'];
 
 // ===== Navigation =====
 function switchView(view) {
@@ -87,13 +87,13 @@ function switchView(view) {
   if (view === 'upload') {
     els.navUpload.classList.add('active');
     els.viewUpload.classList.add('active');
+  } else if (view === 'batch') {
+    els.navBatch.classList.add('active');
+    els.viewBatch.classList.add('active');
   } else {
     els.navHistory.classList.add('active');
     els.viewHistory.classList.add('active');
     loadHistory();
-  } else if (view === 'batch') {
-    els.navBatch.classList.add('active');
-    els.viewBatch.classList.add('active');
   }
 }
 
@@ -311,7 +311,7 @@ function renderStats(bills) {
   const avgVal = values.length ? (values.reduce((a, b) => a + b, 0) / values.length) : 0;
   els.statAvgValue.textContent = avgVal > 0 ? `R$ ${avgVal.toFixed(2)}` : '—';
 
-  const kwhs = bills.map(b => parseFloat(String(b.consumo_kwh || '0').replace(',', '.'))).filter(v => v > 0);
+  const kwhs = bills.map(b => parseFloat(String(b.consumo_total_kwh || '0').replace(',', '.'))).filter(v => v > 0);
   const avgKwh = kwhs.length ? (kwhs.reduce((a, b) => a + b, 0) / kwhs.length) : 0;
   els.statAvgKwh.textContent = avgKwh > 0 ? `${Math.round(avgKwh)} kWh` : '—';
 
@@ -334,7 +334,7 @@ function renderTable(bills) {
     const ref = formatCell(bill.mes_referencia);
     const venc = formatCell(bill.data_vencimento);
     const valor = formatCell(bill.valor_total, true);
-    const kwh = formatCell(bill.consumo_kwh);
+    const kwh = formatCell(bill.consumo_total_kwh);
     const bandeira = formatBandeira(bill.bandeira_tarifaria);
     const proc = bill.data_processamento
       ? new Date(bill.data_processamento).toLocaleDateString('pt-BR')
