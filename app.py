@@ -29,6 +29,12 @@ def energy_bill():
     if file.filename == "":
         return jsonify({"error": "Arquivo sem nome"}), 400
 
+    # Validação simples de extensão
+    allowed_extensions = {".pdf", ".png", ".jpg", ".jpeg"}
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed_extensions:
+        return jsonify({"error": f"Tipo de arquivo não suportado. Use: {', '.join(allowed_extensions)}"}), 400
+
     file_name = file.filename
     content = file.read()
     saved_path = save_file(file_name, content)
@@ -70,7 +76,7 @@ def list_bills():
 @app.route("/batch-process", methods=["POST"])
 def batch_process():
     """
-    Processa todos os arquivos de uma pasta informada via JSON.
+    Inicia o processamento em lote assincronamente.
     Ex: { "folder_path": "C:/contas", "output_file": "meu_batch.txt" }
     """
     data = request.get_json()
@@ -78,21 +84,33 @@ def batch_process():
         return jsonify({"error": "Caminho da pasta (folder_path) não informado"}), 400
     
     folder_path = data["folder_path"]
-    output_file = data.get("output_file", os.path.join(STORAGE_DIR, "batch_results.txt"))
+    output_file = data.get("output_file") or "batch_results.txt"
     
     if not os.path.isdir(folder_path):
         return jsonify({"error": f"Caminho '{folder_path}' não é um diretório válido"}), 400
     
-    from batch_processor import run_batch
+    from batch_processor import run_batch_async
     
-    # Executa o processamento em lote
-    run_batch(folder_path, output_file)
+    # Inicia o processamento em lote em background
+    job_id = run_batch_async(folder_path, output_file)
     
     return jsonify({
-        "message": "Processamento em lote concluído com sucesso",
-        "folder_path": folder_path,
-        "output_file": output_file
-    }), 200
+        "message": "Processamento em lote iniciado",
+        "job_id": job_id
+    }), 202
+
+
+@app.route("/batch-status/<job_id>", methods=["GET"])
+def batch_status(job_id):
+    """
+    Consulta o status de um processamento em lote.
+    """
+    from batch_processor import batch_jobs
+    job = batch_jobs.get(job_id)
+    if not job:
+        return jsonify({"error": "Job não encontrado"}), 404
+        
+    return jsonify(job), 200
 
 
 if __name__ == "__main__":

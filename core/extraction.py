@@ -1,42 +1,136 @@
 """
 extraction.py
 -------------
-Camada Core responsável pela extração de dados usando Regex.
+Camada Core responsável pela extração estruturada de dados de faturas de energia.
+
+Estratégia (sem dependência de IA):
+  1. Para PDFs digitais: usa as TABELAS extraídas pelo pdfplumber (estrutura nativa).
+  2. Para qualquer tipo: usa regex direcionado apenas em seções específicas do texto
+     (cabeçalho, datas, valor total) — não no texto inteiro.
+  3. Retorna um score de confiança (0.0–1.0) para a camada de serviço decidir
+     se precisa acionar a IA como fallback.
 """
 
-import os
 import re
-import nltk
-from nltk.corpus import stopwords
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional, Tuple
 
-NLTK_DATA_PATH = os.environ.get("NLTK_DATA", "/usr/local/share/nltk_data")
-if NLTK_DATA_PATH not in nltk.data.path:
-    nltk.data.path.append(NLTK_DATA_PATH)
+# ---------------------------------------------------------------------------
+# Campos críticos: se a maioria estiver preenchida, a IA não é necessária
+# ---------------------------------------------------------------------------
+CRITICAL_FIELDS = [
+    "distribuidora", "valor_total", "mes_referencia",
+    "data_vencimento", "consumo_total_kwh",
+]
 
-def ensure_nltk_data():
+
+# ---------------------------------------------------------------------------
+# Mapeamento de linhas de tabela → campos do BillData
+# Chave: substring a ser buscada na descrição da linha (case-insensitive)
+# Valor: dict com 'quantity' e 'price' apontando para os campos do modelo
+# ---------------------------------------------------------------------------
+TABLE_ROW_MAP: Dict[str, Dict[str, str]] = {
+    "consumo ativo na ponta(kwh)-tusd": {
+        "quantity": "consumo_ativo_na_ponta_tusd",
+        "price":    "consumo_ativo_na_ponta_tusd_preco_unitario",
+    },
+    "consumo ativo fora de ponta(kwh)-tusd": {
+        "quantity": "consumo_ativo_fora_ponta_tusd",
+        "price":    "consumo_ativo_fora_ponta_tusd_preco_unitario",
+    },
+    "consumo ativo na ponta(kwh)-te": {
+        "quantity": "consumo_ativo_na_ponta_te",
+        "price":    "consumo_ativo_na_ponta_te_preco_unitario",
+    },
+    "consumo ativo fora ponta(kwh)-te": {
+        "quantity": "consumo_ativo_fora_ponta_te",
+        "price":    "consumo_ativo_fora_ponta_te_preco_unitario",
+    },
+    "consumo-tusd": {
+        "quantity": "consumo_ativo_fora_ponta_tusd",
+        "price":    "consumo_ativo_fora_ponta_tusd_preco_unitario",
+    },
+    "consumo-te": {
+        "quantity": "consumo_ativo_fora_ponta_te",
+        "price":    "consumo_ativo_fora_ponta_te_preco_unitario",
+    },
+    "consumo reativo exc. na ponta(kvarh)": {
+        "quantity": "consumo_reativo_exc_na_ponta",
+        "price":    "consumo_reativo_exc_na_ponta_preco_unitario",
+    },
+    "consumo reativo exc. fora ponta(kvarh)": {
+        "quantity": "consumo_reativo_exc_fora_ponta",
+        "price":    "consumo_reativo_exc_fora_ponta_preco_unitario",
+    },
+    "demanda ativa(kw)": {
+        "quantity": "demanda_ativa",
+        "price":    "demanda_ativa_preco_unitario",
+    },
+    "demanda reativa excedente": {
+        "quantity": "demanda_reativa_excedente",
+        "price":    "demanda_reativa_excedente_preco_unitario",
+    },
+    "demanda reativa ponta": {
+        "quantity": "demanda_reativo_ponta",
+        "price":    None,
+    },
+    "demanda reativa fora": {
+        "quantity": "demanda_reativo_fora_ponta",
+        "price":    None,
+    },
+}
+
+# Distribuidoras conhecidas (nome exibido → nome normalizado)
+KNOWN_DISTRIBUTORS = {
+    "celpe": "Celpe",
+    "neoenergia pernambuco": "Celpe",
+    "neoenergiapernambuco": "Celpe",
+    "companhia energética de pernambuco": "Celpe",
+    "cemig": "Cemig",
+    "copel": "Copel",
+    "enel": "Enel",
+    "light": "Light",
+    "coelba": "Coelba",
+    "energisa": "Energisa",
+    "equatorial": "Equatorial",
+    "elektro": "Elektro",
+    "cpfl": "CPFL",
+    "rge": "RGE",
+    "cosern": "Cosern",
+    "ceal": "CEAL",
+    "ceron": "CERON",
+    "amazonas energia": "Amazonas Energia",
+}
+
+
+# ---------------------------------------------------------------------------
+# Utilitários internos
+# ---------------------------------------------------------------------------
+
+def _normalize_number(value: str) -> Optional[str]:
+    """
+    Converte número no formato brasileiro para float string.
+    Suporta: '1.234,56' → '1234.56' | '1.234' → '1234' | '1234,56' → '1234.56'
+    """
+    if not value:
+        return None
+    v = value.strip().rstrip("-")
+    # Formato brasileiro com milhares e centavos: 1.234,56
+    if re.search(r"\d\.\d{3},\d", v):
+        v = v.replace(".", "").replace(",", ".")
+    # Apenas milhares sem centavos: 50.050 ou 1.234 (3 dígitos após o ponto)
+    elif re.match(r"^\d+\.\d{3}$", v):
+        v = v.replace(".", "")
+    # Vírgula como decimal: 1234,56
+    elif re.match(r"^\d+,\d+$", v):
+        v = v.replace(",", ".")
     try:
-        stopwords.words("portuguese")
-    except LookupError:
-        nltk.download("stopwords", download_dir=NLTK_DATA_PATH)
-        if NLTK_DATA_PATH not in nltk.data.path:
-            nltk.data.path.append(NLTK_DATA_PATH)
+        return str(float(v))
+    except ValueError:
+        return None
 
-def preprocess_text(text: str) -> str:
-    """Limpa e normaliza o texto extraído por OCR."""
-    ensure_nltk_data()
-    if not text:
-        return ""
-    text = text.lower()
-    text = re.sub(r"[^a-z0-9à-ú\s,.:/-]", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    tokens = re.findall(r"[\wÀ-ú]+", text, flags=re.UNICODE)
-    stop_words = set(stopwords.words("portuguese"))
-    filtered_tokens = [word for word in tokens if word not in stop_words]
-    return " ".join(filtered_tokens)
 
-def _find(pattern: str, text: str, flags=0) -> str | None:
-    """Aplica regex e retorna o primeiro grupo capturado não-vazio, ou None."""
+def _find(pattern: str, text: str, flags: int = 0) -> Optional[str]:
+    """Aplica regex e retorna o primeiro grupo capturado não-vazio."""
     match = re.search(pattern, text, re.IGNORECASE | flags)
     if not match:
         return None
@@ -45,147 +139,372 @@ def _find(pattern: str, text: str, flags=0) -> str | None:
             return g.strip()
     return None
 
-def extract_bill_data(text: str) -> Dict[str, Any]:
+
+def _detect_distributor(text: str) -> Optional[str]:
+    """Detecta a distribuidora no texto de cabeçalho."""
+    text_lower = text.lower()
+    for key, normalized in KNOWN_DISTRIBUTORS.items():
+        if key in text_lower:
+            return normalized
+    return None
+
+
+def _calculate_confidence(data: Dict[str, Any]) -> float:
     """
-    Extrai campos de uma conta de energia elétrica via regex.
+    Calcula score de confiança baseado nos campos críticos preenchidos.
+    Retorna valor entre 0.0 e 1.0.
     """
-    if not text:
-        return {}
-
-    # --- Padrões de extração ---
-    cpf_cnpj_pattern = r"(?:DADOS\s+DO\s+CLIENTE|NOME\s+DO\s+CLIENTE)[\s\S]{0,500}?(?:CNPJ|CNPU|CPF)[:\s]*((\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/]?\d{4}[-\s]?\d{2}|\d{3}[\.\s]?\d{3}[\.\s]?\d{3}[-\s]?\d{2}))"
-    vencimento_pattern = r"(?:vencimento|data\s+de\s+vencimento|vence\s+em)[\s\S]{0,150}?([0-9]{2}[\/\-][0-9]{2}[\/\-][0-9]{4})"
-    referencia_pattern = r"REF[:\.]?M[EÊ]S[\/\s]?ANO[\s\S]{0,50}?\n.*?((?:0[1-9]|1[0-2])\/20[0-9]{2})"
-    referencia_pattern2 = r"^((?:0[1-9]|1[0-2])\/20[0-9]{2})\s+[\d\.,]+\s+\d{2}\/\d{2}\/\d{4}"
-    referencia_pattern3 = r"(?:DADOS\s+DO\s+CLIENTE|NOME)[\s\S]{0,200}?\d{2}\/\d{2}\/\d{4}\s+(\d{2}\/\d{2}\/\d{4})\s+\d+"
-    valor_total_pattern = r"(?:total\s+a\s+pagar|valor\s+total|total\s+da\s+fatura|valor\s+a\s+pagar|total)[:\s]*R?\$?\s*([\d\.,]+)"
-    leitura_atual_pattern = r"\d+\s+Energia\s+Ativa\s+[^\n]+?[\d\.]+,\d+\s+([\d\.]+,\d+)\s+[\d\.]+,\d+"
-    leitura_anterior_pattern = r"\d+\s+Energia\s+Ativa\s+[^\n]+?([\d\.]+,\d+)\s+[\d\.]+,\d+\s+[\d\.]+,\d+"
-    instalacao_pattern = r"N[°ºº]?\s*DA\s+INSTALA[CÇ][AÃ]O\s*\n[^\n]+(\d{7})\s*$"
-    numero_fatura_pattern = r"NOTA\s+FISCAL[^\n]*\n[^\n]+?(\d{9})\s+\d{7}"
-    distribuidora_pattern = r"(?:distribuidora|concession[aá]ria)[:\s]*(.+?)(?:\n|$)"
-    distribuidora_nome_pattern = r"\b(celpe|neoenergia(?:pernambuco)?|cemig|copel|enel|light|coelba|energisa|equatorial|elektro|cpfl|rge|cosern|ceal|ceron|amazonas\s*energia)\b"
-    distribuidora_celpe_pattern = r"(COMPANHIA\s+ENERG[EÉ]TICA\s+DE\s+PERNAMBUCO)"
-    bandeira_pattern = r"(?:BANDEIRA|Band\.?\s+)[:\s]*(VERDE|AMARELA|VERMELHA\s+PATAMAR\s+[12]|ESCASSEZ\s+H[IÍ]DRICA)"
-    fornecimento_pattern = r"(monof[aá]sico|bif[aá]sico|trif[aá]sico)"
-    tarifa_pattern = r"(?:tarifa|te\s+\+\s+tusd)[:\s]*R?\$?\s*([\d\.,]+)"
-    
-    # Grupo A
-    demanda_ativa_pattern = r"Demanda\s+Ativa\(kW\)[\s]*([\d\.,]+)"
-    demanda_reativa_pattern = r"Demanda\s+Reativ[oa].*?\(kVAR\)[^\d]*([\d\.,]+)"
-    demanda_reativo_ponta_pattern = r"Demanda\s+Reativ[oa]\s+(?:Na\s+)?Ponta.*?[\s]*([\d\.,]+)"
-    demanda_reativo_fora_ponta_pattern = r"Demanda\s+Reativ[oa]\s+Fora\s+(?:de\s+)?Ponta.*?[\s]*([\d\.,]+)"
-    consumo_ponta_tusd_pattern = r"Consumo\s+Ativo\s+Na\s+Ponta\(kWh\)-\s*TUSD[\s]*([\d\.,]+)"
-    consumo_fora_ponta_tusd_pattern = r"Consumo\s+Ativo\s+Fora\s+de\s+Ponta\(kWh\)-TUSD[\s]*([\d\.,]+)"
-    consumo_ponta_te_pattern = r"Consumo\s+Ativo\s+Na\s+Ponta\(kWh\)-TE[\s]*([\d\.,]+)"
-    consumo_fora_ponta_te_pattern = r"Consumo\s+Ativo\s+Fora\s+Ponta\(kWh\)-TE[\s]*([\d\.,]+)"
-    reativo_exc_ponta_pattern = r"Consumo\s+Reativo\s+Exc\.\s+Na\s+Ponta\(kVARh\)[\s]*([\d\.,]+)"
-    reativo_exc_fora_ponta_pattern = r"Consumo\s+Reativo\s+Exc\.\s+Fora\s+Ponta\(kVARh\)[\s]*([\d\.,]+)"
-    geracao_pattern = r"(?i)(?:Consumo\s+Ativo\s+Fora\s+de\s+Ponta|Gera[çc][ãa]o).*?([\d\.,]+)-"
-
-    codigo_cliente_pattern = r"(\d{10})\s+\d{2}\/\d{2}\/\d{4}\s+[\d\.,]+\s*\nC[OÓ]DIGO\s+DO\s+CLIENTE\s+VENCIMENTO"
-    codigo_cliente_tabela_pattern = r"N[°º]\s+DO\s+CLIENTE\s*\n[^\n]+?(\d{10})\s*(?:\n|$)"
-    codigo_cliente_boleto_dados_pattern = r"\d{6,}\s+(\d{10})\s+\d{2}\/\d{2}\/\d{4}"
-    data_leitura_anterior_pattern = r"(?:leitura\s+anterior)[:\s]*([0-9]{2}\/[0-9]{2}\/[0-9]{4})"
-    data_leitura_atual_pattern = r"(?:leitura\s+atual)[:\s]*([0-9]{2}\/[0-9]{2}\/[0-9]{4})"
-    numero_dias_faturamento_pattern = r"(?:n[º°]?\s+de\s+dias)[:\s]*(\d+)"
-    classificacao_pattern = r"[CG]LASSIFICA[ÇC][ÃA]O[:\s]*(?:\n)([^\n]+)"
-    classificacao_inline_pattern = r"[CG]LASSIFICA[ÇC][ÃA]O[:\s]*([A-Za-z][\w\s\-]{2,30}?(?:COMERCIAL|RESIDENCIAL|INDUSTRIAL|RURAL))"
- 
-    demanda_ativa_preco_pattern = r"Demanda\s+Ativa\(kW\)[^\d]*(?:[\d\.,]+)[^\d]+([\d\.,]+)"
-    demanda_reativa_preco_pattern = r"Demanda\s+Reativ[oa].*?\(kVAR\)[^\d]*(?:[\d\.,]+)[^\d]+([\d\.,]+)"
-    consumo_ponta_tusd_preco_pattern = r"Consumo\s+Ativo\s+Na\s+Ponta\(kWh\)-\s*TUSD[^\d]*(?:[\d\.,]+)[\s]+([\d\.,]+)"
-    consumo_fora_ponta_tusd_preco_pattern = r"Consumo\s+Ativo\s+Fora\s+de\s+Ponta\(kWh\)-TUSD[^\d]*(?:[\d\.,]+)[\s]+([\d\.,]+)"
-    consumo_ponta_te_preco_pattern = r"Consumo\s+Ativo\s+Na\s+Ponta\(kWh\)-TE[^\d]*(?:[\d\.,]+)[\s]+([\d\.,]+)"
-    consumo_fora_ponta_te_preco_pattern = r"Consumo\s+Ativo\s+Fora\s+Ponta\(kWh\)-TE[^\d]*(?:[\d\.,]+)[\s]+([\d\.,]+)"
-    reativo_exc_ponta_preco_pattern = r"Consumo\s+Reativo\s+Exc\.\s+Na\s+Ponta\(kVARh\)[^\d]*(?:[\d\.,]+)[\s]+([\d\.,]+)"
-    reativo_exc_fora_ponta_preco_pattern = r"Consumo\s+Reativo\s+Exc\.\s+Fora\s+Ponta\(kVARh\)[^\d]*(?:[\d\.,]+)[\s]+([\d\.,]+)"
-
-    # --- Extração ---
-    cpf_cnpj_raw = _find(cpf_cnpj_pattern, text)
-    cpf_cnpj = cpf_cnpj_raw if cpf_cnpj_raw and cpf_cnpj_raw.replace(".","").replace("/","").replace("-","") not in {"10835932000108"} else None
-
-    vencimento = _find(vencimento_pattern, text)
-    referencia = (
-        _find(referencia_pattern, text) or
-        _find(referencia_pattern2, text, flags=re.MULTILINE) or
-        _find(referencia_pattern3, text)
+    filled = sum(
+        1 for f in CRITICAL_FIELDS
+        if data.get(f) and data[f] not in (None, "None", "")
     )
-    if referencia and '/' in referencia and len(referencia) == 10:
-        parts = referencia.split('/')
-        referencia = f"{parts[1]}/{parts[2]}"
+    return filled / len(CRITICAL_FIELDS)
 
-    valor_total = _find(valor_total_pattern, text)
-    geracao = _find(geracao_pattern, text)
-    leitura_atual = _find(leitura_atual_pattern, text)
-    leitura_anterior = _find(leitura_anterior_pattern, text)
+
+# ---------------------------------------------------------------------------
+# Extração de tabelas (pdfplumber)
+# ---------------------------------------------------------------------------
+
+def extract_from_tables(tables: List[List[List[str]]]) -> Dict[str, Any]:
+    """
+    Parseia as tabelas extraídas pelo pdfplumber e mapeia para campos do BillData.
+    As tabelas chegam como lista de tabelas, cada uma sendo lista de linhas,
+    cada linha sendo lista de strings (células).
+    """
+    result: Dict[str, Any] = {}
+    consumo_ponta_te = 0.0
+    consumo_fora_ponta_te = 0.0
+    geracao = 0.0
+
+    for table in tables:
+        if not table:
+            continue
+        for row in table:
+            if not row:
+                continue
+
+            # Normaliza as células: remove None e strip
+            cells = [str(c).strip() if c else "" for c in row]
+            if not cells or not cells[0]:
+                continue
+
+            desc = cells[0].lower()
+
+            # --- Busca mapeamento direto ---
+            for key, mapping in TABLE_ROW_MAP.items():
+                if key in desc:
+                    # Coluna 1 = quantidade, Coluna 2 = preço unitário
+                    if len(cells) > 1 and mapping.get("quantity"):
+                        val = _normalize_number(cells[1])
+                        if val:
+                            result[mapping["quantity"]] = val
+
+                    if len(cells) > 2 and mapping.get("price"):
+                        val = _normalize_number(cells[2])
+                        if val:
+                            result[mapping["price"]] = val
+                    break
+
+            # --- Detecção de geração solar/injetada ---
+            # Exige que a célula de valor tenha sinal negativo (indicador de crédito)
+            # para evitar capturar número de instalação ou outros campos
+            is_geracao = (
+                "energia injet" in desc
+                or "gera\u00e7\u00e3o" in desc
+                or "ger. fora" in desc
+                or "ger. ponta" in desc
+                or ("geracao" in desc and "consumo" not in desc)
+            )
+            if is_geracao and len(cells) > 1:
+                raw_cell = cells[1]
+                # Só aceita como geração se o valor original termina em '-' (sinal negativo)
+                if raw_cell.endswith("-"):
+                    val = _normalize_number(raw_cell)
+                    if val:
+                        result["geracao_kwh"] = val
+                        try:
+                            geracao = float(val)
+                        except ValueError:
+                            pass
+
+            # --- Valor Total ---
+            if any(k in desc for k in ["total a pagar", "valor total", "total da fatura"]):
+                for cell in cells[1:]:
+                    val = _normalize_number(cell)
+                    if val:
+                        result["valor_total"] = val
+                        break
+
+    # Soma consumo total a partir das parcelas TE
+    try:
+        consumo_ponta_te = float(result.get("consumo_ativo_na_ponta_te") or 0)
+        consumo_fora_ponta_te = float(result.get("consumo_ativo_fora_ponta_te") or 0)
+        total = consumo_ponta_te + consumo_fora_ponta_te + geracao
+        if total > 0:
+            result["consumo_total_kwh"] = f"{total:.2f}"
+            
+        # Calcula Tarifa total (TUSD + TE)
+        tusd_price = float(result.get("consumo_ativo_fora_ponta_tusd_preco_unitario") or 0)
+        te_price = float(result.get("consumo_ativo_fora_ponta_te_preco_unitario") or 0)
+        if tusd_price > 0 and te_price > 0:
+            result["tarifa_rs_kwh"] = f"{(tusd_price + te_price):.6f}"
+    except (ValueError, TypeError):
+        pass
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Extração de texto (cabeçalho + seções específicas)
+# ---------------------------------------------------------------------------
+
+def extract_from_text(raw_text: str) -> Dict[str, Any]:
+    """
+    Extrai campos que vivem fora das tabelas: cabeçalho, datas, valor total,
+    bandeira, classificação. Usa regex direcionado (não em texto inteiro).
+    """
+    result: Dict[str, Any] = {}
+
+    # Distribuidora
+    result["distribuidora"] = _detect_distributor(raw_text[:2000])
+
+    # CPF/CNPJ do cliente (PAGADOR)
+    # Na Celpe o CNPJ da distribuidora fica no cabeçalho; o do cliente fica na
+    # seção 'PAGADOR | CPF/CNPJ' no rodapé — pode estar parcialmente mascarado
+    cpf_cnpj = (
+        # Busca explicitamente na seção do pagador
+        _find(
+            r"PAGADOR[^\n]*\n[^\n]+?\|\s*([\d\.\*/\-]+)",
+            raw_text
+        )
+        # Ou busca após 'NOME DO CLIENTE:' contexto
+        or _find(
+            r"NOME\s+DO\s+CLIENTE[^\n]*\n[^\n]+?\n[^\n]*?\b([\d]{2}[\.\ ]?[\d]{3}[\.\ ]?[\d]{3}[\/][\d]{4}[-][\d]{2})\b",
+            raw_text
+        )
+    )
+    # Garante que não é o CNPJ da distribuidora conhecida (10.835.932 = Celpe)
+    if cpf_cnpj and "10.835.932" in cpf_cnpj.replace(" ", ""):
+        cpf_cnpj = None
+    result["cpf_cnpj_titular"] = cpf_cnpj
+
+    # Nome/razão social do titular (linha após 'NOME DO CLIENTE:')
+    result["endereco_titular"] = _find(
+        r"PAGADOR[^\n]*\n([^\n|]+?)\s*\|", raw_text
+    )
+
+    # Número de instalação
+    result["numero_instalacao"] = _find(
+        r"N[°º]?\s*DA\s+INSTALA[CÇ][AÃ]O\s*\n[^\n]+?(\d{7})",
+        raw_text, re.MULTILINE
+    )
+
+    # Número da fatura / NF
+    result["numero_fatura"] = _find(
+        r"NOTA\s+FISCAL[^\n]*\n[^\n]+?(\d{9})\s+\d{7}",
+        raw_text, re.MULTILINE
+    )
+
+    # Código do cliente
+    result["codigo_cliente"] = (
+        _find(r"(\d{10})\s+\d{2}\/\d{2}\/\d{4}\s+[\d\.,]+\s*\nC[OÓ]DIGO\s+DO\s+CLIENTE", raw_text)
+        or _find(r"N[°º]\s+DO\s+CLIENTE\s*\n[^\n]+?(\d{10})", raw_text, re.MULTILINE)
+        or _find(r"\d{6,}\s+(\d{10})\s+\d{2}\/\d{2}\/\d{4}", raw_text)
+    )
+
+    # Mês de referência
+    mes_ref = (
+        _find(r"REF[:\.]?M[EÊ]S[\\/\s]?ANO[\s\S]{0,50}?\n.*?((?:0[1-9]|1[0-2])\/20\d{2})", raw_text)
+        or _find(r"^((?:0[1-9]|1[0-2])\/20\d{2})\s+[\d\.,]+\s+\d{2}\/\d{2}\/\d{4}", raw_text, re.MULTILINE)
+    )
+    # Se vier como DD/MM/AAAA, converte para MM/AAAA
+    if mes_ref and len(mes_ref) == 10 and mes_ref.count("/") == 2:
+        parts = mes_ref.split("/")
+        mes_ref = f"{parts[1]}/{parts[2]}"
+    result["mes_referencia"] = mes_ref
+
+    # Data de vencimento
+    result["data_vencimento"] = _find(
+        r"(?:vencimento|data\s+de\s+vencimento|vence\s+em)[\s\S]{0,150}?"
+        r"([0-9]{2}[\/\-][0-9]{2}[\/\-][0-9]{4})",
+        raw_text
+    )
+
+    # Datas de leitura (DD/MM/AAAA)
+    result["data_leitura_anterior"] = _find(
+        r"(?:leitura\s+anterior|medida\s+anterior)[:\s]*([0-9]{2}\/[0-9]{2}\/[0-9]{4})", raw_text
+    )
+    result["data_leitura_atual"] = _find(
+        r"(?:leitura\s+atual|medida\s+atual)[:\s]*([0-9]{2}\/[0-9]{2}\/[0-9]{4})", raw_text
+    )
+
+    # Número de dias
+    result["numero_dias_faturamento"] = _find(
+        r"(?:n[º°]?\s+de\s+dias)[:\s]*(\d+)", raw_text
+    )
+
+    # Bandeira tarifária
+    result["bandeira_tarifaria"] = _find(
+        r"(?:BANDEIRA|Band\.?\s+)[:\s]*(VERDE|AMARELA|VERMELHA\s+PATAMAR\s+[12]|ESCASSEZ\s+H[IÍ]DRICA)",
+        raw_text
+    )
+
+    # Tipo de fornecimento
+    result["tipo_fornecimento"] = _find(
+        r"(monof[aá]sico|bif[aá]sico|trif[aá]sico)", raw_text
+    )
+
+    # Classificação
+    result["classificacao_detalhada"] = (
+        _find(r"[CG]LASSIFICA[ÇC][ÃA]O[:\s]*(?:\n)([^\n]+)", raw_text, re.MULTILINE)
+        or _find(r"[CG]LASSIFICA[ÇC][ÃA]O[:\s]*([A-Za-z][\w\s\-]{2,30}?(?:COMERCIAL|RESIDENCIAL|INDUSTRIAL|RURAL))", raw_text)
+    )
+
+    # Valor total: busca no formato Celpe (linha do mes com valor e vencimento)
+    # Formato: "MM/AAAA 135,64 DD/MM/AAAA" ou "TOTAL A PAGAR R$ 135,64"
+    valor_raw = (
+        _find(
+            r"^(?:0[1-9]|1[0-2])\/20\d{2}\s+([\d\.]+,\d{2})\s+\d{2}\/\d{2}\/20\d{2}",
+            raw_text, re.MULTILINE
+        )
+        or _find(
+            r"(?:total\s+a\s+pagar|valor\s+total|total\s+da\s+fatura)[:\s\n]*R?\$?\s*([\d\.]+,[\d]{2}|\d{3,}[.,]\d{2}|\d{2,})",
+            raw_text
+        )
+    )
+    if valor_raw and re.match(r"^\d{1}$", valor_raw.strip()):
+        valor_raw = None
+    result["valor_total"] = valor_raw
+
+    # Leituras do medidor: formato tabular Celpe
+    # Exemplo: "3213648496 Energia Ativa Único 321004,00 328347,00 1,00000 100,00"
+    leitura_tabular = _find(
+        r"Energia\s+Ativa[^\n]+?([\d\.]+,\d+)\s+([\d\.]+,\d+)\s+[\d\.]+,\d+\s+[\d\.]+,\d+",
+        raw_text
+    )
+    # Se achou pelo padrão tabular, extrai os dois valores (anterior e atual)
+    tabular_match = re.search(
+        r"Energia\s+Ativa[^\n]+?([\d\.]+,\d+)\s+([\d\.]+,\d+)\s+[\d\.]+,\d+\s+[\d\.]+,\d+",
+        raw_text, re.IGNORECASE
+    )
+    if tabular_match:
+        leitura_anterior_raw = tabular_match.group(1)
+        leitura_atual_raw = tabular_match.group(2)
+    else:
+        # Fallback: busca explícita por rótulo, requer 5+ dígitos para não pegar datas
+        leitura_atual_raw = _find(
+            r"(?:leitura\s+atual|medida\s+atual)[:\s]*(?!\d{2}\/\d{2}\/\d{4})([1-9]\d{4,})", raw_text
+        )
+        leitura_anterior_raw = _find(
+            r"(?:leitura\s+anterior|medida\s+anterior)[:\s]*(?!\d{2}\/\d{2}\/\d{4})([1-9]\d{4,})", raw_text
+        )
+    result["leitura_atual"] = leitura_atual_raw
+    result["leitura_anterior"] = leitura_anterior_raw
+
+    # Geração solar no texto: só aceita quando há '-' após o valor (indicador de crédito)
+    # Exige valores com vírgula decimal (ex: '8.379,98-') OU 4+ dígitos para evitar CNPJ/sufixos
+    # Também busca por "credi tos utilizados" que é comum na Celpe
+    geracao_text = (
+        _find(
+            r"(?:credi\s*tos\s*utilizados|cr[eé]ditos\s*utilizados)[^\d]*([\d\.]+)(?:\s*kwh)?",
+            raw_text, re.IGNORECASE
+        )
+        or _find(
+            r"(?:energia\s+injetad|gera[\u00e7c][\u00e3a]o\s+(?:fora|ponta|total)|ger\.\s+(?:fora|ponta))"
+            r"[^\n]{0,80}?([\d]{1,3}(?:\.\d{3})+,\d+|\d+,\d{2}(?=-))",
+            raw_text
+        )
+    )
+    if geracao_text:
+        result["geracao_kwh"] = _normalize_number(geracao_text)
+
+    # Consumos Detalhados (TUSD e TE) e Preços Unitários
+    # Exemplo: "Consumo-TUSD kWh 100,00 0,53391810 53,39"
+    tusd_match = re.search(r"Consumo[^\n]*?TUSD[^\n]*?(?:kWh)?\s+([\d\.]+,\d+)\s+([\d\.]+,\d{4,})", raw_text, re.IGNORECASE)
+    te_match = re.search(r"Consumo[^\n]*?TE[^\n]*?(?:kWh)?\s+([\d\.]+,\d+)\s+([\d\.]+,\d{4,})", raw_text, re.IGNORECASE)
     
-    consumo_ponta_te = _find(consumo_ponta_te_pattern, text)
-    consumo_fora_ponta_te = _find(consumo_fora_ponta_te_pattern, text)
-
-    def _to_float(val):
-        if not val: return 0.0
-        try:
-            return float(val.replace(".", "").replace(",", "."))
-        except:
-            return 0.0
-
-    ponta_te_val = _to_float(consumo_ponta_te)
-    fora_ponta_te_val = _to_float(consumo_fora_ponta_te)
-    geracao_val = _to_float(geracao)
+    tusd_qty, tusd_price, te_qty, te_price = 0.0, 0.0, 0.0, 0.0
     
-    consumo_total_val = ponta_te_val + fora_ponta_te_val + geracao_val
-    
-    if consumo_total_val == 0:
-        atu_val = _to_float(leitura_atual)
-        ant_val = _to_float(leitura_anterior)
-        consumo_total_val = atu_val - ant_val
-        if consumo_total_val < 0: consumo_total_val = 0
+    if tusd_match:
+        result["consumo_ativo_fora_ponta_tusd"] = _normalize_number(tusd_match.group(1))
+        result["consumo_ativo_fora_ponta_tusd_preco_unitario"] = _normalize_number(tusd_match.group(2))
+        try: tusd_qty = float(result["consumo_ativo_fora_ponta_tusd"])
+        except: pass
+        try: tusd_price = float(result["consumo_ativo_fora_ponta_tusd_preco_unitario"])
+        except: pass
+        
+    if te_match:
+        result["consumo_ativo_fora_ponta_te"] = _normalize_number(te_match.group(1))
+        result["consumo_ativo_fora_ponta_te_preco_unitario"] = _normalize_number(te_match.group(2))
+        try: te_qty = float(result["consumo_ativo_fora_ponta_te"])
+        except: pass
+        try: te_price = float(result["consumo_ativo_fora_ponta_te_preco_unitario"])
+        except: pass
 
-    consumo_total_kwh = f"{consumo_total_val:.2f}" if consumo_total_val > 0 else None
+    # Calcula Consumo Total (TE + Geração) se não veio da tabela
+    try:
+        geracao_val = float(result.get("geracao_kwh") or 0)
+        consumo_base = te_qty if te_qty > 0 else tusd_qty
+        if consumo_base > 0 or geracao_val > 0:
+            result["consumo_total_kwh"] = f"{(consumo_base + geracao_val):.2f}"
+    except (ValueError, TypeError):
+        pass
 
-    distribuidora_raw = _find(distribuidora_pattern, text) or _find(distribuidora_nome_pattern, text)
-    if not distribuidora_raw and _find(distribuidora_celpe_pattern, text):
-        distribuidora_raw = "celpe"
-    if distribuidora_raw and "neoenergia" in distribuidora_raw.lower():
-        distribuidora_raw = "celpe"
+    # Calcula Tarifa total (TUSD + TE)
+    if tusd_price > 0 and te_price > 0:
+        result["tarifa_rs_kwh"] = f"{(tusd_price + te_price):.6f}"
 
-    return {
-        "distribuidora": distribuidora_raw,
-        "cpf_cnpj_titular": cpf_cnpj,
-        "numero_instalacao": _find(instalacao_pattern, text, flags=re.MULTILINE),
-        "numero_fatura": _find(numero_fatura_pattern, text, flags=re.MULTILINE),
-        "mes_referencia": referencia,
-        "data_vencimento": vencimento,
-        "valor_total": valor_total,
-        "consumo_total_kwh": consumo_total_kwh,
-        "geracao_kwh": geracao,
-        "leitura_atual": leitura_atual,
-        "leitura_anterior": leitura_anterior,
-        "bandeira_tarifaria": _find(bandeira_pattern, text),
-        "tipo_fornecimento": _find(fornecimento_pattern, text),
-        "tarifa_rs_kwh": _find(tarifa_pattern, text),
-        "demanda_ativa": _find(demanda_ativa_pattern, text),
-        "demanda_reativa_excedente": _find(demanda_reativa_pattern, text),
-        "demanda_reativo_ponta": _find(demanda_reativo_ponta_pattern, text),
-        "demanda_reativo_fora_ponta": _find(demanda_reativo_fora_ponta_pattern, text),
-        "consumo_ativo_na_ponta_tusd": _find(consumo_ponta_tusd_pattern, text),
-        "consumo_ativo_fora_ponta_tusd": _find(consumo_fora_ponta_tusd_pattern, text),
-        "consumo_ativo_na_ponta_te": consumo_ponta_te,
-        "consumo_ativo_fora_ponta_te": consumo_fora_ponta_te,
-        "consumo_reativo_exc_na_ponta": _find(reativo_exc_ponta_pattern, text),
-        "consumo_reativo_exc_fora_ponta": _find(reativo_exc_fora_ponta_pattern, text),
-        "codigo_cliente": _find(codigo_cliente_pattern, text) or _find(codigo_cliente_tabela_pattern, text) or _find(codigo_cliente_boleto_dados_pattern, text),
-        "data_leitura_anterior": _find(data_leitura_anterior_pattern, text),
-        "data_leitura_atual": _find(data_leitura_atual_pattern, text),
-        "numero_dias_faturamento": _find(numero_dias_faturamento_pattern, text),
-        "classificacao_detalhada": _find(classificacao_pattern, text, flags=re.MULTILINE) or _find(classificacao_inline_pattern, text),
-        "demanda_ativa_preco_unitario": _find(demanda_ativa_preco_pattern, text),
-        "demanda_reativa_excedente_preco_unitario": _find(demanda_reativa_preco_pattern, text),
-        "consumo_ativo_na_ponta_tusd_preco_unitario": _find(consumo_ponta_tusd_preco_pattern, text),
-        "consumo_ativo_fora_ponta_tusd_preco_unitario": _find(consumo_fora_ponta_tusd_preco_pattern, text),
-        "consumo_ativo_na_ponta_te_preco_unitario": _find(consumo_ponta_te_preco_pattern, text),
-        "consumo_ativo_fora_ponta_te_preco_unitario": _find(consumo_fora_ponta_te_preco_pattern, text),
-        "consumo_reativo_exc_na_ponta_preco_unitario": _find(reativo_exc_ponta_preco_pattern, text),
-        "consumo_reativo_exc_fora_ponta_preco_unitario": _find(reativo_exc_fora_ponta_preco_pattern, text),
-    }
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Função principal — ponto de entrada do bill_service
+# ---------------------------------------------------------------------------
+
+def extract_bill_data(
+    raw_text: str,
+    tables: Optional[List[List[List[str]]]] = None
+) -> Tuple[Dict[str, Any], float]:
+    """
+    Extrai dados estruturados da fatura combinando tabelas + texto.
+
+    Args:
+        raw_text:  Texto bruto extraído via OCR ou pdfplumber.
+        tables:    Lista de tabelas do pdfplumber (opcional, para PDFs digitais).
+
+    Returns:
+        Tupla (dados_extraidos: dict, confidence_score: float).
+        O score indica o quão completa foi a extração (0.0–1.0).
+        Score < 0.5 → acionar IA como fallback.
+    """
+    result: Dict[str, Any] = {}
+
+    # 1ª passagem: tabelas estruturadas (maior precisão)
+    if tables:
+        table_data = extract_from_tables(tables)
+        result.update({k: v for k, v in table_data.items() if v is not None})
+
+    # 2ª passagem: campos de texto (cabeçalho, datas, metadados)
+    text_data = extract_from_text(raw_text)
+    # Só substitui se o campo ainda não foi preenchido pelas tabelas
+    for key, value in text_data.items():
+        if value is not None and result.get(key) is None:
+            result[key] = value
+
+    confidence = _calculate_confidence(result)
+    print(f"DEBUG (extraction): score de confiança = {confidence:.2f} ({sum(1 for v in result.values() if v)} campos preenchidos)")
+
+    return result, confidence
+
+
+# ---------------------------------------------------------------------------
+# Mantido para compatibilidade com preprocess_text (usado no refinement fallback)
+# ---------------------------------------------------------------------------
+
+def preprocess_text(text: str) -> str:
+    """Limpeza básica do texto OCR para normalização de espaços e caracteres."""
+    if not text:
+        return ""
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()

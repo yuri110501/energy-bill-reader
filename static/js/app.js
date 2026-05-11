@@ -394,6 +394,8 @@ function formatFileSize(bytes) {
 els.btnStartBatch.addEventListener('click', startBatchProcessing);
 els.btnBatchReset.addEventListener('click', resetBatchView);
 
+let batchPollInterval = null;
+
 async function startBatchProcessing() {
   const folderPath = els.batchFolderPath.value.trim();
   const outputFile = els.batchOutputFile.value.trim();
@@ -407,6 +409,7 @@ async function startBatchProcessing() {
   $('.batch-card').classList.add('hidden');
   els.batchStatusContainer.classList.remove('hidden');
   els.batchSuccessContainer.classList.add('hidden');
+  els.batchStatusMessage.innerHTML = "Iniciando processamento em lote...<br><small>Isso pode levar alguns minutos.</small>";
 
   try {
     const response = await fetch('/batch-process', {
@@ -419,11 +422,9 @@ async function startBatchProcessing() {
 
     if (!response.ok) throw new Error(data.error || 'Erro no processamento');
 
-    els.batchStatusContainer.classList.add('hidden');
-    els.batchSuccessContainer.classList.remove('hidden');
-    els.batchSuccessMessage.textContent = `${data.message}. Os resultados estão em: ${data.output_file}`;
-    showToast('Processamento concluído!');
-    loadHistory(); // Atualiza histórico se novos arquivos foram processados
+    // Inicia polling de status
+    const jobId = data.job_id;
+    pollBatchStatus(jobId);
   } catch (err) {
     $('.batch-card').classList.remove('hidden');
     els.batchStatusContainer.classList.add('hidden');
@@ -431,7 +432,44 @@ async function startBatchProcessing() {
   }
 }
 
+async function pollBatchStatus(jobId) {
+  if (batchPollInterval) clearInterval(batchPollInterval);
+  
+  batchPollInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`/batch-status/${jobId}`);
+      if (!res.ok) throw new Error('Falha ao consultar status');
+      
+      const job = await res.json();
+      
+      if (job.status === 'running') {
+        const perc = job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0;
+        els.batchStatusMessage.innerHTML = `<strong>${job.message}</strong><br>Progresso: ${job.processed} / ${job.total} (${perc}%)<br><small>Erros: ${job.errors}</small>`;
+      } else if (job.status === 'completed') {
+        clearInterval(batchPollInterval);
+        els.batchStatusContainer.classList.add('hidden');
+        els.batchSuccessContainer.classList.remove('hidden');
+        els.batchSuccessMessage.innerHTML = `<strong>${job.message}</strong><br>Os resultados estão salvos em:<br><code>${job.output_file}</code>`;
+        showToast('Processamento concluído!');
+        loadHistory(); // Atualiza histórico se novos arquivos foram processados
+      } else if (job.status === 'error') {
+        clearInterval(batchPollInterval);
+        $('.batch-card').classList.remove('hidden');
+        els.batchStatusContainer.classList.add('hidden');
+        showToast(`Erro: ${job.message}`);
+      }
+    } catch (err) {
+      console.error(err);
+      clearInterval(batchPollInterval);
+      $('.batch-card').classList.remove('hidden');
+      els.batchStatusContainer.classList.add('hidden');
+      showToast('Erro de comunicação ao atualizar status do lote.');
+    }
+  }, 2000);
+}
+
 function resetBatchView() {
+  if (batchPollInterval) clearInterval(batchPollInterval);
   $('.batch-card').classList.remove('hidden');
   els.batchStatusContainer.classList.add('hidden');
   els.batchSuccessContainer.classList.add('hidden');

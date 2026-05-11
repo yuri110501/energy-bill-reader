@@ -2,7 +2,7 @@
 ocr.py
 ------
 Motor de OCR para extração de texto de PDFs e imagens.
-Movido de ocr_utils.py — responsabilidade única: converter arquivo em texto.
+Responsabilidade única: converter arquivo em texto e tabelas estruturadas.
 """
 
 import os
@@ -27,67 +27,119 @@ if os.name == 'nt' and HAS_OCR:
 
 def extract_text(file_path: str) -> str:
     """
-    Extrai texto de um arquivo (PDF ou imagem).
-    Estratégia: pdfplumber (nativo) → PyMuPDF+Tesseract (OCR) → imagem direta.
+    Extrai somente o texto de um arquivo (compatibilidade com código legado).
+    Prefira usar extract_structured() para obter também as tabelas.
     """
-    if not HAS_OCR:
-        print("WARN (ocr): pytesseract/Pillow não instalados. Retornando texto vazio.")
-        return ""
+    text, _ = extract_structured(file_path)
+    return text
 
+
+def extract_structured(file_path: str) -> tuple[str, list]:
+    """
+    Extrai texto E tabelas estruturadas de um arquivo PDF ou imagem.
+
+    Retorna:
+        (raw_text: str, tables: list[list[list[str]]])
+        - Para PDFs digitais: texto + tabelas via pdfplumber (alta precisão)
+        - Para PDFs scaneados/imagens: texto via OCR + tabelas vazias []
+    """
     if not os.path.exists(file_path):
         print(f"WARN (ocr): Arquivo não encontrado: {file_path}")
-        return ""
+        return "", []
 
     try:
         if file_path.lower().endswith(".pdf"):
-            # Tenta extração nativa com pdfplumber primeiro
+            # Tenta extração nativa com pdfplumber (PDFs digitais)
             if HAS_PDFPLUMBER:
                 try:
                     with pdfplumber.open(file_path) as pdf:
                         if len(pdf.pages) > 0:
-                            page = pdf.pages[0]
-                            native_text = page.extract_text()
+                            texts = []
+                            all_tables = []
+
+                            for page in pdf.pages:
+                                # Extrai texto da página
+                                page_text = page.extract_text()
+                                if page_text:
+                                    texts.append(page_text)
+
+                                # Extrai tabelas da página
+                                page_tables = page.extract_tables()
+                                if page_tables:
+                                    all_tables.extend(page_tables)
+
+                            native_text = "\n\n".join(texts)
+
                             # Se extraiu bastante texto, é PDF digital (não scan)
                             if native_text and len(native_text.strip()) > 300:
-                                print(f"DEBUG (ocr): Texto extraído via PDFPLUMBER ({len(native_text)} chars)")
-                                return native_text
-                except Exception as e:
-                    print(f"WARN (ocr): Falha ao tentar ler com pdfplumber ({e}). Recorrendo ao OCR...")
+                                print(
+                                    f"DEBUG (ocr): Extraído via PDFPLUMBER "
+                                    f"({len(native_text)} chars, "
+                                    f"{len(pdf.pages)} pág., "
+                                    f"{len(all_tables)} tabelas)"
+                                )
+                                return native_text, all_tables
 
-            # Fallback para OCR (PyMuPDF -> Tesseract)
+                except Exception as e:
+                    print(f"WARN (ocr): pdfplumber falhou ({e}). Recorrendo ao OCR...")
+
+            # Fallback: PDF scaneado → PyMuPDF + Tesseract
+            if not HAS_OCR:
+                print("WARN (ocr): pytesseract/Pillow não instalados.")
+                return "", []
+
             print("DEBUG (ocr): Tentando extração via OCR (PyMuPDF + Tesseract)...")
             import fitz  # PyMuPDF
             doc = fitz.open(file_path)
             if len(doc) == 0:
-                return ""
-            page = doc.load_page(0)
-            # Aumenta a resolução com zoom = 2
-            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-            from io import BytesIO
-            img_data = pix.tobytes("png")
-            img = Image.open(BytesIO(img_data))
+                return "", []
+
+            extracted_texts = []
+            # Limita a 3 páginas para evitar travamentos longos no OCR
+            max_pages = min(len(doc), 3)
+
+            for page_num in range(max_pages):
+                page = doc.load_page(page_num)
+                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                from io import BytesIO
+                img_data = pix.tobytes("png")
+                img_page = Image.open(BytesIO(img_data))
+                img_page = _preprocess_image(img_page)
+
+                custom_config = r"--oem 3 --psm 6 -l por+eng"
+                page_text = pytesseract.image_to_string(img_page, config=custom_config)
+                extracted_texts.append(page_text)
+
             doc.close()
+            full_text = "\n\n".join(extracted_texts)
+            print(f"DEBUG (ocr): Extraído via TESSERACT PDF ({len(full_text)} chars, {max_pages} pág.)")
+            # PDFs scaneados não têm tabelas estruturadas
+            return full_text, []
+
         else:
-            # Fluxo normal para imagens JPG, PNG
-            print("DEBUG (ocr): Tentando extração via OCR nativo para imagem...")
+            # Imagens (JPG, PNG)
+            if not HAS_OCR:
+                print("WARN (ocr): pytesseract/Pillow não instalados.")
+                return "", []
+
+            print("DEBUG (ocr): Tentando extração via OCR para imagem...")
             img = Image.open(file_path)
+            img = _preprocess_image(img)
 
-        img = _preprocess_image(img)
+            custom_config = r"--oem 3 --psm 6 -l por+eng"
+            text = pytesseract.image_to_string(img, config=custom_config)
+            print(f"DEBUG (ocr): Extraído via TESSERACT Imagem ({len(text)} chars)")
+            return text, []
 
-        # Configura Tesseract para português
-        custom_config = r"--oem 3 --psm 6 -l por+eng"
-        text = pytesseract.image_to_string(img, config=custom_config)
-        print(f"DEBUG (ocr): Texto extraído via TESSERACT ({len(text)} chars)")
-        return text
     except Exception as e:
-        print(f"ERROR (ocr): Falha no OCR: {e}")
-        return ""
+        print(f"ERROR (ocr): Falha na extração: {e}")
+        return "", []
 
 
 def _preprocess_image(img: Image.Image) -> Image.Image:
     """
     Aplica melhorias na imagem para aumentar a qualidade do OCR:
-    - Escala de cinza, aumento de contraste, nitidez, redimensionamento.
+    escala de cinza, contraste, nitidez e redimensionamento mínimo.
     """
     if img.mode not in ("RGB", "L"):
         img = img.convert("RGB")

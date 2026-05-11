@@ -64,9 +64,29 @@ class BillRepository:
 
     @staticmethod
     def append_to_csv(bill_data: Dict[str, Any], original_filename: str = "desconhecido") -> None:
-        """Acumula os dados em um CSV único."""
+        """Acumula os dados em um CSV único, evitando duplicatas."""
         os.makedirs(STORAGE_DIR, exist_ok=True)
         file_exists = os.path.exists(CSV_PATH)
+
+        # Verificação de duplicidade por número da fatura ou arquivo_origem
+        is_duplicate = False
+        if file_exists:
+            numero_fatura = bill_data.get("numero_fatura", "None")
+            with open(CSV_PATH, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for existing_row in reader:
+                    # Se tiver numero_fatura válido e for igual, é duplicata
+                    if numero_fatura != "None" and existing_row.get("numero_fatura") == numero_fatura:
+                        is_duplicate = True
+                        break
+                    # Alternativamente, se o arquivo tiver o mesmo nome
+                    if existing_row.get("arquivo_origem") == original_filename:
+                        is_duplicate = True
+                        break
+
+        if is_duplicate:
+            print(f"DEBUG (repository): Registro duplicado ignorado para o arquivo {original_filename}")
+            return
 
         row = {
             "arquivo_origem": original_filename,
