@@ -1,168 +1,109 @@
-# 🔌 pdfplumber (Energy Bill Reader Fork)
+# 🔌 Energy Bill Reader (Advanced Data Pipeline)
 
-Leitura automática de **contas de energia elétrica** com OCR + IA.  
-Extrai dados estruturados em JSON e os acumula em CSV para análise de dados.
+Este projeto é um pipeline de engenharia de dados de alta precisão para a extração, processamento e análise de faturas de energia elétrica. Ele utiliza uma abordagem híbrida de OCR, Processamento de Linguagem Natural (NLP) via Regex e Refinamento de IA (Gemini API) para converter documentos não estruturados em dados relacionais prontos para análise.
 
 ---
 
-## 📁 Estrutura do Projeto
+## 🏗️ Arquitetura do Sistema
 
-```
+O projeto segue princípios de **Clean Architecture**, separando a lógica de negócio das implementações de infraestrutura.
+
+```text
 energy-bill-reader/
-├── app.py               # Servidor Flask (API REST)
-├── ocr_utils.py         # OCR com Tesseract / PDFPlumber
-├── text_utils.py        # Extração de campos via regex
-├── refinement_utils.py  # Refinamento via Gemini API (+ fallback regex)
-├── export_utils.py      # Salva JSON individual + acumula CSV
-├── storage_utils.py     # Gerencia arquivos locais
-├── requirements.txt
-├── storage/             # Criado automaticamente ao rodar
-│   ├── json/            # Um JSON por conta processada
-│   ├── bills_data.csv   # CSV acumulado para análise
-│   └── <distribuidora>/ # Imagens organizadas por empresa
-└── dataset/bills/       # Coloque aqui suas contas de teste
+├── app.py                  # API REST (Flask) para processamento unitário
+├── batch_processor.py      # Script de alto desempenho para processamento em lote
+├── run_test.py             # Suíte de testes de integração e validação
+├── core/                   # Camada de Domínio e Lógica de Negócio
+│   ├── extraction.py       # Motores de extração baseados em Regex (NLP)
+│   ├── models.py           # Modelos de dados (Pydantic) e Tipagem (PEP 484)
+│   └── refinement.py       # Lógica de integração com LLM para limpeza de dados
+├── infrastructure/         # Detalhes de Implementação e Ferramentas Externas
+│   ├── ocr.py              # Adaptadores de OCR (Tesseract / PDFPlumber)
+│   ├── repository.py       # Camada de persistência (CSV/JSON)
+│   └── storage.py          # Gestão de sistema de arquivos e organização
+├── services/               # Camada de Aplicação e Orquestração
+│   └── bill_service.py     # Orquestrador do fluxo OCR -> Extração -> Save
+├── utils/                  # Utilitários Transversais
+│   └── validators.py       # Validação de integridade (CPF/CNPJ, Datas)
+├── storage/                # Data Lake Local (Estrutura de Bronze/Silver)
+│   ├── json/               # Raw Data (Arquivos JSON individuais)
+│   ├── bills_data.csv      # Consolidado para Analytics (Dataset Final)
+│   └── <distribuidora>/    # Documentos organizados por categoria
+└── requirements.txt        # Dependências do ecossistema
 ```
 
 ---
 
-## ⚙️ Instalação
+## 🚀 Setup do Ambiente
 
-### 1. Pré-requisitos
+### 1. Requisitos de Sistema
+O motor de OCR requer o **Tesseract** instalado no sistema:
+- **Windows**: `winget install --id=Unix.TesseractOCR`
+- **Linux**: `sudo apt install tesseract-ocr tesseract-ocr-por`
 
-**Tesseract OCR** (obrigatório para leitura das imagens):
-
+### 2. Ambiente Virtual e Dependências
 ```bash
-# Ubuntu/Debian
-sudo apt install tesseract-ocr tesseract-ocr-por
+# Criação e ativação do venv
+python -m venv venv
+source venv/bin/activate  # ou venv\Scripts\activate no Windows
 
-# windows
-winget install --id=Unix.TesseractOCR
-
-# macOS
-brew install tesseract tesseract-lang
-```
-
-### 2. Dependências Python
-
-```bash
+# Instalação de dependências
 pip install -r requirements.txt
 ```
 
-### 3. Dados NLTK (stopwords em português)
-
-```python
-python -c "import nltk; nltk.download('stopwords')"
+### 3. Variáveis de Ambiente
+Crie um arquivo `.env` na raiz do projeto:
+```env
+GOOGLE_API_KEY="SUA_CHAVE_AQUI"
+PORT=8080
 ```
 
 ---
 
-## 🚀 Executando
+## ⚙️ Modos de Operação
 
+### A. API REST (Processamento Unitário)
+Ideal para integração com front-ends ou sistemas de upload único.
 ```bash
 python app.py
 ```
+**Endpoint Principal:** `POST /energy-bill`
+Recebe um arquivo e retorna o JSON estruturado.
 
-O servidor sobe em `http://localhost:8080`.
-
----
-
-## 🔑 Configuração da Gemini API (opcional)
-
-Se quiser refinamento com IA (melhora muito a extração de campos ambíguos), exporte sua chave:
-
+### B. Batch Processor (Engenharia de Dados)
+Ideal para processar históricos de contas (dataset de treino ou auditoria).
 ```bash
-export GOOGLE_API_KEY="AIza..."
+python batch_processor.py
 ```
-
-Sem a chave, o sistema funciona 100% offline usando apenas regex como fallback.
+O script varrerá o diretório configurado, processará todas as imagens e atualizará o `storage/bills_data.csv` de forma atômica.
 
 ---
 
-## 📡 Endpoints
+## 📊 Pipeline de Dados (Data Flow)
 
-### `POST /energy-bill`
-Envia uma imagem de conta de energia e recebe os dados extraídos.
-
-```bash
-curl -X POST http://localhost:8080/energy-bill \
-  -F "file=@minha_conta.jpg"
-```
-
-**Resposta:**
-```json
-{
-  "dados_extraidos": {
-    "distribuidora": "CELPE",
-    "cpf_cnpj_titular": "123.456.789-00",
-    "endereco_titular": "Rua das Flores, 123",
-    "numero_instalacao": "1234567",
-    "numero_fatura": "9876543",
-    "mes_referencia": "Janeiro/2024",
-    "data_vencimento": "15/02/2024",
-    "valor_total": "187.45",
-    "consumo_total_kwh": "342",
-    "leitura_atual": "5432",
-    "leitura_anterior": "5090",
-    "bandeira_tarifaria": "Verde",
-    "tipo_fornecimento": "Monofásico",
-    "classe_consumidor": "Residencial",
-    "tarifa_rs_kwh": "0.85"
-  },
-  "json_salvo_em": "storage/json/minha_conta_20240115_143022.json"
-}
-```
-
-### `GET /bills`
-Lista todas as contas já processadas (lê o CSV acumulado).
-
-```bash
-curl http://localhost:8080/bills
-```
+1. **Ingestão**: Recebimento do PDF/Imagem via API ou Pasta.
+2. **OCR Layer**: Conversão de imagem para texto bruto preservando a estrutura espacial.
+3. **Extraction Layer**: Aplicação de padrões Regex otimizados para distribuidoras brasileiras (Neonergia, Celpe, etc).
+4. **Refinement Layer**: O Gemini AI atua como um "Data Quality Specialist", corrigindo ruídos de leitura e inferindo campos complexos.
+5. **Validation Layer**: Verificação de checksums de CPF/CNPJ e tipagem de dados.
+6. **Persistência**: Escrita em CSV (Append-only) e organização física do arquivo por distribuidora.
 
 ---
 
-## 📊 Análise de Dados
+## 🛠️ Qualidade de Código e TDD
 
-Todos os dados ficam acumulados em `storage/bills_data.csv`.  
-Abra direto no Excel/Power BI ou use pandas:
-
-```python
-import pandas as pd
-
-df = pd.read_csv("storage/bills_data.csv")
-
-# Consumo médio por distribuidora
-print(df.groupby("distribuidora")["consumo_total_kwh"].mean())
-
-# Evolução do valor total ao longo do tempo
-df["data_vencimento"] = pd.to_datetime(df["data_vencimento"], dayfirst=True)
-df.sort_values("data_vencimento").plot(x="data_vencimento", y="valor_total")
-```
+Este projeto adota o ciclo **Red-Green-Refactor**:
+- Use `python run_test.py` para validar o pipeline completo.
+- Todos os campos extraídos seguem as tipagens definidas em `core/models.py`.
+- O código é documentado focando no "Porquê" da lógica de negócio (especialmente nos padrões de Regex).
 
 ---
 
-## 🏗️ Fluxo de Processamento
-
-```
-Imagem da conta
-      │
-      ▼
-  OCR (Tesseract / PDFPlumber)
-      │
-      ▼
-  Extração regex (text_utils.py)
-      │
-      ▼
-  Refinamento IA (Gemini API)
-  └─ fallback: regex adicional
-      │
-      ▼
-  Validação (CPF/CNPJ)
-      │
-      ├──► JSON individual  (storage/json/)
-      ├──► Linha no CSV     (storage/bills_data.csv)
-      └──► Imagem organizada por distribuidora
-```
+## 📈 Próximos Passos para o Analista de Dados
+O arquivo `storage/bills_data.csv` está pronto para ingestão em ferramentas como:
+- **Pandas**: `df = pd.read_csv('storage/bills_data.csv')`
+- **Power BI / Tableau**: Conexão direta com o CSV.
+- **SQL**: Pode ser facilmente importado para um PostgreSQL/BigQuery via scripts de ingestão.
 
 ---
 
@@ -170,19 +111,22 @@ Imagem da conta
 
 | Campo | Descrição | Exemplo |
 |---|---|---|
-| `distribuidora` | Nome da distribuidora | CELPE |
-| `cpf_cnpj_titular` | CPF ou CNPJ do cliente | 123.456.789-00 |
-| `endereco_titular` | Endereço da instalação | Rua das Flores, 123 |
-| `numero_instalacao` | Código da UC | 1234567 |
-| `numero_fatura` | Número da nota/fatura | 9876543 |
-| `mes_referencia` | Mês de competência | Janeiro/2024 |
-| `data_vencimento` | Data de vencimento | 15/02/2024 |
-| `valor_total` | Valor a pagar (R$) | 187.45 |
-| `consumo_total_kwh` | Consumo total (Ponta + Fora + Ger) | 342 |
-| `geracao_kwh` | Valor de geração extraído | 100.00 |
-| `leitura_atual` | Leitura atual do medidor | 5432 |
-| `leitura_anterior` | Leitura anterior do medidor | 5090 |
-| `bandeira_tarifaria` | Bandeira do mês | Verde |
-| `tipo_fornecimento` | Fase elétrica | Monofásico |
-| `classe_consumidor` | Classe tarifária | Residencial |
-| `tarifa_rs_kwh` | Tarifa (R$/kWh) | 0.85 |
+| `distribuidora` | Nome da distribuidora (Normalizado) | NEONERGIA |
+| `cpf_cnpj_titular` | Identificação do cliente (Validado) | 123.456.789-00 |
+| `endereco_titular` | Local de instalação | Rua das Flores, 123 |
+| `numero_instalacao` | Código da Unidade Consumidora (UC) | 1234567 |
+| `numero_fatura` | Identificador da nota fiscal | 9876543 |
+| `mes_referencia` | Competência da fatura | Janeiro/2024 |
+| `data_vencimento` | Prazo limite de pagamento | 15/02/2024 |
+| `valor_total` | Montante total da fatura (R$) | 187.45 |
+| `consumo_total_kwh` | Somatório de consumo (Ponta + Fora) | 342 |
+| `geracao_kwh` | Créditos de geração distribuída | 100.00 |
+| `leitura_atual` | Registro atual do medidor | 5432 |
+| `leitura_anterior` | Registro do mês anterior | 5090 |
+| `bandeira_tarifaria` | Status da bandeira (Verde/Amarela/Vermelha) | Verde |
+| `tipo_fornecimento` | Configuração de fases (Monofásico/Trifásico) | Monofásico |
+| `classe_consumidor` | Classificação tarifária | Residencial |
+| `tarifa_rs_kwh` | Custo unitário do kWh (R$) | 0.85 |
+
+---
+> **Mentor Note:** Mantenha a estrutura de pastas organizada. A separação entre `infrastructure` e `core` garante que possamos trocar o motor de OCR ou o banco de dados sem quebrar a regra de negócio de como uma conta de luz é lida.
