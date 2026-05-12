@@ -119,9 +119,13 @@ def run_batch(folder_path, output_file="batch_results.txt", job_id=None):
 
 if __name__ == "__main__":
     import sys
+    import io
+
+    # Força a saída do console para UTF-8 para evitar erros com caracteres especiais no Windows
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     
     if len(sys.argv) < 2:
-        print("\n🚀 BATCH PROCESSOR - Energy Bill Reader")
+        print("\nBATCH PROCESSOR - Energy Bill Reader")
         print("-" * 40)
         print("Uso: python batch_processor.py <caminho_da_pasta> [arquivo_saida.txt]")
         print("Exemplo: python batch_processor.py ./Contas resultados.txt\n")

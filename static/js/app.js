@@ -62,22 +62,17 @@ let allBills = [];
 const FIELD_LABELS = {
   distribuidora: 'Distribuidora',
   cpf_cnpj_titular: 'CPF / CNPJ',
-  endereco_titular: 'Endereço',
-  numero_instalacao: 'Nº Instalação',
-  numero_fatura: 'Nº Fatura',
+  codigo_cliente: 'Código do cliente',
   mes_referencia: 'Mês Referência',
   data_vencimento: 'Vencimento',
   valor_total: 'Valor Total (R$)',
-  consumo_total_kwh: 'Consumo (kWh)',
   leitura_atual: 'Leitura Atual',
   leitura_anterior: 'Leitura Anterior',
   bandeira_tarifaria: 'Bandeira Tarifária',
   tipo_fornecimento: 'Tipo Fornecimento',
-  classe_consumidor: 'Classe',
-  tarifa_rs_kwh: 'Tarifa (R$/kWh)',
 };
 
-const HIGHLIGHT_FIELDS = ['valor_total', 'consumo_total_kwh', 'distribuidora'];
+const HIGHLIGHT_FIELDS = ['valor_total', 'distribuidora'];
 
 // ===== Navigation =====
 function switchView(view) {
@@ -311,9 +306,7 @@ function renderStats(bills) {
   const avgVal = values.length ? (values.reduce((a, b) => a + b, 0) / values.length) : 0;
   els.statAvgValue.textContent = avgVal > 0 ? `R$ ${avgVal.toFixed(2)}` : '—';
 
-  const kwhs = bills.map(b => parseFloat(String(b.consumo_total_kwh || '0').replace(',', '.'))).filter(v => v > 0);
-  const avgKwh = kwhs.length ? (kwhs.reduce((a, b) => a + b, 0) / kwhs.length) : 0;
-  els.statAvgKwh.textContent = avgKwh > 0 ? `${Math.round(avgKwh)} kWh` : '—';
+  els.statAvgKwh.parentElement.classList.add('hidden');
 
   const distributors = new Set(bills.map(b => b.distribuidora).filter(d => d && d !== 'None'));
   els.statDistributors.textContent = distributors.size || '—';
@@ -345,7 +338,6 @@ function renderTable(bills) {
       <td>${ref}</td>
       <td>${venc}</td>
       <td>${valor}</td>
-      <td>${kwh}</td>
       <td>${bandeira}</td>
       <td>${proc}</td>
     </tr>`;
@@ -434,14 +426,14 @@ async function startBatchProcessing() {
 
 async function pollBatchStatus(jobId) {
   if (batchPollInterval) clearInterval(batchPollInterval);
-  
+
   batchPollInterval = setInterval(async () => {
     try {
       const res = await fetch(`/batch-status/${jobId}`);
       if (!res.ok) throw new Error('Falha ao consultar status');
-      
+
       const job = await res.json();
-      
+
       if (job.status === 'running') {
         const perc = job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0;
         els.batchStatusMessage.innerHTML = `<strong>${job.message}</strong><br>Progresso: ${job.processed} / ${job.total} (${perc}%)<br><small>Erros: ${job.errors}</small>`;

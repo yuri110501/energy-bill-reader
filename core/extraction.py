@@ -19,7 +19,7 @@ from typing import Dict, Any, List, Optional, Tuple
 # ---------------------------------------------------------------------------
 CRITICAL_FIELDS = [
     "distribuidora", "valor_total", "mes_referencia",
-    "data_vencimento", "consumo_total_kwh",
+    "data_vencimento",
 ]
 
 
@@ -37,21 +37,13 @@ TABLE_ROW_MAP: Dict[str, Dict[str, str]] = {
         "quantity": "consumo_ativo_fora_ponta_tusd",
         "price":    "consumo_ativo_fora_ponta_tusd_preco_unitario",
     },
-    "consumo ativo na ponta(kwh)-te": {
-        "quantity": "consumo_ativo_na_ponta_te",
-        "price":    "consumo_ativo_na_ponta_te_preco_unitario",
-    },
-    "consumo ativo fora ponta(kwh)-te": {
-        "quantity": "consumo_ativo_fora_ponta_te",
-        "price":    "consumo_ativo_fora_ponta_te_preco_unitario",
-    },
     "consumo-tusd": {
         "quantity": "consumo_ativo_fora_ponta_tusd",
         "price":    "consumo_ativo_fora_ponta_tusd_preco_unitario",
     },
     "consumo-te": {
-        "quantity": "consumo_ativo_fora_ponta_te",
-        "price":    "consumo_ativo_fora_ponta_te_preco_unitario",
+        "quantity": None,
+        "price":    None,
     },
     "consumo reativo exc. na ponta(kvarh)": {
         "quantity": "consumo_reativo_exc_na_ponta",
@@ -172,8 +164,6 @@ def extract_from_tables(tables: List[List[List[str]]]) -> Dict[str, Any]:
     cada linha sendo lista de strings (células).
     """
     result: Dict[str, Any] = {}
-    consumo_ponta_te = 0.0
-    consumo_fora_ponta_te = 0.0
     geracao = 0.0
 
     for table in tables:
@@ -235,21 +225,7 @@ def extract_from_tables(tables: List[List[List[str]]]) -> Dict[str, Any]:
                         result["valor_total"] = val
                         break
 
-    # Soma consumo total a partir das parcelas TE
-    try:
-        consumo_ponta_te = float(result.get("consumo_ativo_na_ponta_te") or 0)
-        consumo_fora_ponta_te = float(result.get("consumo_ativo_fora_ponta_te") or 0)
-        total = consumo_ponta_te + consumo_fora_ponta_te + geracao
-        if total > 0:
-            result["consumo_total_kwh"] = f"{total:.2f}"
-            
-        # Calcula Tarifa total (TUSD + TE)
-        tusd_price = float(result.get("consumo_ativo_fora_ponta_tusd_preco_unitario") or 0)
-        te_price = float(result.get("consumo_ativo_fora_ponta_te_preco_unitario") or 0)
-        if tusd_price > 0 and te_price > 0:
-            result["tarifa_rs_kwh"] = f"{(tusd_price + te_price):.6f}"
-    except (ValueError, TypeError):
-        pass
+
 
     return result
 
@@ -288,23 +264,6 @@ def extract_from_text(raw_text: str) -> Dict[str, Any]:
         cpf_cnpj = None
     result["cpf_cnpj_titular"] = cpf_cnpj
 
-    # Nome/razão social do titular (linha após 'NOME DO CLIENTE:')
-    result["endereco_titular"] = _find(
-        r"PAGADOR[^\n]*\n([^\n|]+?)\s*\|", raw_text
-    )
-
-    # Número de instalação
-    result["numero_instalacao"] = _find(
-        r"N[°º]?\s*DA\s+INSTALA[CÇ][AÃ]O\s*\n[^\n]+?(\d{7})",
-        raw_text, re.MULTILINE
-    )
-
-    # Número da fatura / NF
-    result["numero_fatura"] = _find(
-        r"NOTA\s+FISCAL[^\n]*\n[^\n]+?(\d{9})\s+\d{7}",
-        raw_text, re.MULTILINE
-    )
-
     # Código do cliente
     result["codigo_cliente"] = (
         _find(r"(\d{10})\s+\d{2}\/\d{2}\/\d{4}\s+[\d\.,]+\s*\nC[OÓ]DIGO\s+DO\s+CLIENTE", raw_text)
@@ -324,10 +283,14 @@ def extract_from_text(raw_text: str) -> Dict[str, Any]:
     result["mes_referencia"] = mes_ref
 
     # Data de vencimento
-    result["data_vencimento"] = _find(
-        r"(?:vencimento|data\s+de\s+vencimento|vence\s+em)[\s\S]{0,150}?"
-        r"([0-9]{2}[\/\-][0-9]{2}[\/\-][0-9]{4})",
-        raw_text
+    result["data_vencimento"] = (
+        _find(
+            r"(?:vencimento|data\s+de\s+vencimento|vence\s+em)[\s\S]{0,150}?"
+            r"([0-9]{2}[\/\-][0-9]{2}[\/\-][0-9]{4})",
+            raw_text
+        )
+        # Fallback Grupo A antigo: inline com Total a Pagar
+        or _find(r"TOTAL\s+A\s+PAGAR\s*\(R\$\)\s+(\d{2}/\d{2}/\d{4})", raw_text)
     )
 
     # Datas de leitura (DD/MM/AAAA)
@@ -344,20 +307,28 @@ def extract_from_text(raw_text: str) -> Dict[str, Any]:
     )
 
     # Bandeira tarifária
-    result["bandeira_tarifaria"] = _find(
-        r"(?:BANDEIRA|Band\.?\s+)[:\s]*(VERDE|AMARELA|VERMELHA\s+PATAMAR\s+[12]|ESCASSEZ\s+H[IÍ]DRICA)",
-        raw_text
+    result["bandeira_tarifaria"] = (
+        _find(
+            r"(?:BANDEIRA|Band\.?\s+)[:\s]*(VERDE|AMARELA|VERMELHA\s+PATAMAR\s+[12]|ESCASSEZ\s+H[IÍ]DRICA)",
+            raw_text
+        )
+        # Fallback Grupo B (DANFE): formato frase
+        or _find(r"bandeira\s+em\s+vigor\s+[eé]\s+a\s+(VERDE|AMARELA|VERMELHA[^\n\.]*)", raw_text)
     )
 
     # Tipo de fornecimento
-    result["tipo_fornecimento"] = _find(
-        r"(monof[aá]sico|bif[aá]sico|trif[aá]sico)", raw_text
+    result["tipo_fornecimento"] = (
+        _find(r"(monof[aá]sico|bif[aá]sico|trif[aá]sico)", raw_text)
+        # Fallback Grupo B/A: formato Conv. Monômia - Trifásico
+        or _find(r"Conv\.\s+(?:Mon[oô]mia|Binom[iî]a)[^\n]*?-\s*(Monof[aá]sico|Bif[aá]sico|Trif[aá]sico)", raw_text)
     )
 
     # Classificação
     result["classificacao_detalhada"] = (
-        _find(r"[CG]LASSIFICA[ÇC][ÃA]O[:\s]*(?:\n)([^\n]+)", raw_text, re.MULTILINE)
-        or _find(r"[CG]LASSIFICA[ÇC][ÃA]O[:\s]*([A-Za-z][\w\s\-]{2,30}?(?:COMERCIAL|RESIDENCIAL|INDUSTRIAL|RURAL))", raw_text)
+        # Layout Grupo A: "CLASSIFICAÇÃO" na linha, valor na linha seguinte
+        _find(r"CLASSIFICA[ÇC][ÃA]O\s*\n\s*([^\n]+)", raw_text, re.MULTILINE)
+        # Layout Grupo B / DANFE: "CLASSIFICAÇÃO: VALOR" na mesma linha
+        or _find(r"CLASSIFICA[ÇC][ÃA]O[:\s]+([A-Z0-9][^\n|]+?)(?:\s{2,}|\||\n)", raw_text)
     )
 
     # Valor total: busca no formato Celpe (linha do mes com valor e vencimento)
@@ -418,41 +389,49 @@ def extract_from_text(raw_text: str) -> Dict[str, Any]:
     if geracao_text:
         result["geracao_kwh"] = _normalize_number(geracao_text)
 
-    # Consumos Detalhados (TUSD e TE) e Preços Unitários
-    # Exemplo: "Consumo-TUSD kWh 100,00 0,53391810 53,39"
-    tusd_match = re.search(r"Consumo[^\n]*?TUSD[^\n]*?(?:kWh)?\s+([\d\.]+,\d+)\s+([\d\.]+,\d{4,})", raw_text, re.IGNORECASE)
-    te_match = re.search(r"Consumo[^\n]*?TE[^\n]*?(?:kWh)?\s+([\d\.]+,\d+)\s+([\d\.]+,\d{4,})", raw_text, re.IGNORECASE)
+    # Consumos Detalhados e Preços Unitários (NOVOS REGEX VALIDADOS)
     
-    tusd_qty, tusd_price, te_qty, te_price = 0.0, 0.0, 0.0, 0.0
-    
-    if tusd_match:
-        result["consumo_ativo_fora_ponta_tusd"] = _normalize_number(tusd_match.group(1))
-        result["consumo_ativo_fora_ponta_tusd_preco_unitario"] = _normalize_number(tusd_match.group(2))
-        try: tusd_qty = float(result["consumo_ativo_fora_ponta_tusd"])
-        except: pass
-        try: tusd_price = float(result["consumo_ativo_fora_ponta_tusd_preco_unitario"])
-        except: pass
-        
-    if te_match:
-        result["consumo_ativo_fora_ponta_te"] = _normalize_number(te_match.group(1))
-        result["consumo_ativo_fora_ponta_te_preco_unitario"] = _normalize_number(te_match.group(2))
-        try: te_qty = float(result["consumo_ativo_fora_ponta_te"])
-        except: pass
-        try: te_price = float(result["consumo_ativo_fora_ponta_te_preco_unitario"])
-        except: pass
+    # 1. Quantidades
+    result["demanda_ativa"] = _find(r'Demanda Ativa\(?kW\)?\s+([\d.,]+)', raw_text)
+    result["consumo_ativo_na_ponta_tusd"] = (
+        _find(r'Consumo-TUSD NPonta kWh\s+([\d.,]+)', raw_text)
+        or _find(r'Consumo Ativo Na Ponta\(kWh\)-TUSD\s+([\d.,]+)', raw_text) # Grupo A
+    )
+    result["consumo_ativo_fora_ponta_tusd"] = (
+        _find(r'Consumo-TUSD F\.Ponta kWh\s+([\d.,]+)', raw_text)
+        or _find(r'Consumo Ativo Fora de Ponta\(kWh\)-TUSD\s+([\d.,]+)', raw_text) # Grupo A
+    )
+    result["demanda_reativa_excedente"] = _find(
+        r"Demanda\s+Reativa\s+Exc\w*\.?\s*\(?kVAr\)?\s+([\d.,]+)", raw_text
+    )
+    result["consumo_reativo_exc_na_ponta"] = _find(
+        r'Consumo\s+Reativo\s+Exc\.\s+Na\s+Ponta\(kVARh\)\s+([\d.,]+)', raw_text
+    )
+    result["consumo_reativo_exc_fora_ponta"] = _find(
+        r'Consumo\s+Reativo\s+Exc\.\s+Fora\s+Ponta\(kVARh\)\s+([\d.,]+)', raw_text
+    )
 
-    # Calcula Consumo Total (TE + Geração) se não veio da tabela
-    try:
-        geracao_val = float(result.get("geracao_kwh") or 0)
-        consumo_base = te_qty if te_qty > 0 else tusd_qty
-        if consumo_base > 0 or geracao_val > 0:
-            result["consumo_total_kwh"] = f"{(consumo_base + geracao_val):.2f}"
-    except (ValueError, TypeError):
-        pass
-
-    # Calcula Tarifa total (TUSD + TE)
-    if tusd_price > 0 and te_price > 0:
-        result["tarifa_rs_kwh"] = f"{(tusd_price + te_price):.6f}"
+    # 2. Preços Unitários
+    result["demanda_ativa_preco_unitario"] = _find(r'Demanda Ativa\(?kW\)?\s+[\d.,]+\s+([\d.,]+)', raw_text)
+    result["demanda_reativa_excedente_preco_unitario"] = _find(
+        r'Demanda\s+Reativa\s+Exc\w*\.?\s*\(?kVAr\)?\s+[\d.,]+\s+([\d.,]+)', raw_text
+    )
+    result["consumo_ativo_na_ponta_tusd_preco_unitario"] = (
+        _find(r'Consumo-TUSD NPonta kWh\s+[\d.,]+\s+([\d.,]+)', raw_text)
+        or _find(r'Consumo Ativo Na Ponta\(kWh\)-TUSD\s+[\d.,]+\s+([\d.,]+)', raw_text) # Grupo A
+    )
+    result["consumo_ativo_fora_ponta_tusd_preco_unitario"] = (
+        _find(r'Consumo-TUSD F\.Ponta kWh\s+[\d.,]+\s+([\d.,]+)', raw_text)
+        or _find(r'Consumo Ativo Fora de Ponta\(kWh\)-TUSD\s+[\d.,]+\s+([\d.,]+)', raw_text) # Grupo A
+    )
+    result["consumo_ativo_na_ponta_te_preco_unitario"] = None
+    result["consumo_ativo_fora_ponta_te_preco_unitario"] = None
+    result["consumo_reativo_exc_na_ponta_preco_unitario"] = _find(
+        r'Consumo\s+Reativo\s+Exc\.\s+Na\s+Ponta\(kVARh\)\s+[\d.,]+\s+([\d.,]+)', raw_text
+    )
+    result["consumo_reativo_exc_fora_ponta_preco_unitario"] = _find(
+        r'Consumo\s+Reativo\s+Exc\.\s+Fora\s+Ponta\(kVARh\)\s+[\d.,]+\s+([\d.,]+)', raw_text
+    )
 
     return result
 

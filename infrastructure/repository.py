@@ -20,19 +20,13 @@ CSV_COLUMNS = [
     "data_processamento",
     "distribuidora",
     "cpf_cnpj_titular",
-    "endereco_titular",
-    "numero_instalacao",
-    "numero_fatura",
     "mes_referencia",
     "data_vencimento",
     "valor_total",
-    "consumo_total_kwh",
     "leitura_atual",
     "leitura_anterior",
     "bandeira_tarifaria",
     "tipo_fornecimento",
-    "classe_consumidor",
-    "tarifa_rs_kwh",
 ]
 
 class BillRepository:
@@ -71,15 +65,10 @@ class BillRepository:
         # Verificação de duplicidade por número da fatura ou arquivo_origem
         is_duplicate = False
         if file_exists:
-            numero_fatura = bill_data.get("numero_fatura", "None")
             with open(CSV_PATH, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for existing_row in reader:
-                    # Se tiver numero_fatura válido e for igual, é duplicata
-                    if numero_fatura != "None" and existing_row.get("numero_fatura") == numero_fatura:
-                        is_duplicate = True
-                        break
-                    # Alternativamente, se o arquivo tiver o mesmo nome
+                    # Se o arquivo tiver o mesmo nome
                     if existing_row.get("arquivo_origem") == original_filename:
                         is_duplicate = True
                         break
