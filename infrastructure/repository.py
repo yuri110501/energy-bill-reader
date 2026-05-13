@@ -27,6 +27,9 @@ CSV_COLUMNS = [
     "leitura_anterior",
     "bandeira_tarifaria",
     "tipo_fornecimento",
+    "classificacao_detalhada",
+    "consumo_ativo_na_ponta_te_preco_unitario",
+    "consumo_ativo_fora_ponta_te_preco_unitario",
 ]
 
 class BillRepository:

@@ -56,6 +56,8 @@ class BillData(BaseModel):
     demanda_reativa_excedente_preco_unitario: Optional[str] = None
     consumo_ativo_na_ponta_tusd_preco_unitario: Optional[str] = None
     consumo_ativo_fora_ponta_tusd_preco_unitario: Optional[str] = None
+    consumo_ativo_na_ponta_te_preco_unitario: Optional[str] = None
+    consumo_ativo_fora_ponta_te_preco_unitario: Optional[str] = None
     consumo_reativo_exc_na_ponta_preco_unitario: Optional[str] = None
     consumo_reativo_exc_fora_ponta_preco_unitario: Optional[str] = None
 

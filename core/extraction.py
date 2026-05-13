@@ -225,6 +225,15 @@ def extract_from_tables(tables: List[List[List[str]]]) -> Dict[str, Any]:
                         result["valor_total"] = val
                         break
 
+            # --- Classificação (Novo) ---
+            if "classifica" in desc:
+                # Otimizado v2: Suporta espaços extras, quebras de linha e torna o : opcional
+                # Aqui buscamos na linha inteira da tabela concatenada
+                row_text = " ".join(cells)
+                classif = _find(r"CLASSIFICA[ÇC][ÃA]O[:\s]*\n?\s*([^\n|]+?)(?:\s{2,}|\||\n|$)", row_text)
+                if classif:
+                    result["classificacao_detalhada"] = classif
+
 
 
     return result
@@ -325,10 +334,9 @@ def extract_from_text(raw_text: str) -> Dict[str, Any]:
 
     # Classificação
     result["classificacao_detalhada"] = (
-        # Layout Grupo A: "CLASSIFICAÇÃO" na linha, valor na linha seguinte
-        _find(r"CLASSIFICA[ÇC][ÃA]O\s*\n\s*([^\n]+)", raw_text, re.MULTILINE)
-        # Layout Grupo B / DANFE: "CLASSIFICAÇÃO: VALOR" na mesma linha
-        or _find(r"CLASSIFICA[ÇC][ÃA]O[:\s]+([A-Z0-9][^\n|]+?)(?:\s{2,}|\||\n)", raw_text)
+        # Otimizado v2: Suporta espaços extras, quebras de linha e torna o : opcional.
+        # Funciona tanto para Grupo A (valor abaixo) quanto Grupo B (valor na linha).
+        _find(r"CLASSIFICA[ÇC][ÃA]O[:\s]*\n?\s*([^\n|]+?)(?:\s{2,}|\||\n|$)", raw_text)
     )
 
     # Valor total: busca no formato Celpe (linha do mes com valor e vencimento)
@@ -424,8 +432,14 @@ def extract_from_text(raw_text: str) -> Dict[str, Any]:
         _find(r'Consumo-TUSD F\.Ponta kWh\s+[\d.,]+\s+([\d.,]+)', raw_text)
         or _find(r'Consumo Ativo Fora de Ponta\(kWh\)-TUSD\s+[\d.,]+\s+([\d.,]+)', raw_text) # Grupo A
     )
-    result["consumo_ativo_na_ponta_te_preco_unitario"] = None
-    result["consumo_ativo_fora_ponta_te_preco_unitario"] = None
+    result["consumo_ativo_na_ponta_te_preco_unitario"] = (
+        _find(r"Consumo-TE\s+Na\s+Ponta\s+kWh\s+[\d.,]+\s+([\d.,]+)", raw_text)
+        or _find(r"Consumo\s+Ativo\s+Na\s+Ponta\(kWh\)-TE[^\d]*(?:[\d\.,]+)[\s]+([\d\.,]+)", raw_text)
+    )
+    result["consumo_ativo_fora_ponta_te_preco_unitario"] = (
+        _find(r"Consumo-TE\s+F\.?Ponta\s+kWh\s+[\d.,]+\s+([\d.,]+)", raw_text)
+        or _find(r"Consumo\s+Ativo\s+Fora\s+(?:de\s+)?Ponta\(kWh\)-TE[^\d]*(?:[\d\.,]+)[\s]+([\d\.,]+)", raw_text)
+    )
     result["consumo_reativo_exc_na_ponta_preco_unitario"] = _find(
         r'Consumo\s+Reativo\s+Exc\.\s+Na\s+Ponta\(kVARh\)\s+[\d.,]+\s+([\d.,]+)', raw_text
     )
