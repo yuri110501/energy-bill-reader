@@ -1,0 +1,330 @@
+Falha em Contas\TOYOLEX IMB MÊS 04.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\core\extraction.py", line 158, in extract_bill_data
+    specific_data = apply_rules(raw_text, profile)
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\core\extraction.py", line 109, in apply_rules
+    val = match.group(1).strip() if match.group(1) else None
+                                    ~~~~~~~~~~~^^^
+IndexError: no such group
+
+Falha em Contas\TOYOLEX IMBI CELPE MES 01.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\core\extraction.py", line 158, in extract_bill_data
+    specific_data = apply_rules(raw_text, profile)
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\core\extraction.py", line 109, in apply_rules
+    val = match.group(1).strip() if match.group(1) else None
+                                    ~~~~~~~~~~~^^^
+IndexError: no such group
+
+Falha em Contas\TOYOLEX IMBI CELPE MÊS 01.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\core\extraction.py", line 158, in extract_bill_data
+    specific_data = apply_rules(raw_text, profile)
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\core\extraction.py", line 109, in apply_rules
+    val = match.group(1).strip() if match.group(1) else None
+                                    ~~~~~~~~~~~^^^
+IndexError: no such group
+
+Falha em Contas\toyolex imbiribeira agosto.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\core\extraction.py", line 158, in extract_bill_data
+    specific_data = apply_rules(raw_text, profile)
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\core\extraction.py", line 109, in apply_rules
+    val = match.group(1).strip() if match.group(1) else None
+                                    ~~~~~~~~~~~^^^
+IndexError: no such group
+
+Falha em Contas\TOYOLEX IMBIRIBEIRA MES 1 CELPE.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\core\extraction.py", line 158, in extract_bill_data
+    specific_data = apply_rules(raw_text, profile)
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\core\extraction.py", line 109, in apply_rules
+    val = match.group(1).strip() if match.group(1) else None
+                                    ~~~~~~~~~~~^^^
+IndexError: no such group
+
+Falha em Contas\TOYOLEX IMBIRIBEIRA MES 3 CELPE.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\core\extraction.py", line 158, in extract_bill_data
+    specific_data = apply_rules(raw_text, profile)
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\core\extraction.py", line 109, in apply_rules
+    val = match.group(1).strip() if match.group(1) else None
+                                    ~~~~~~~~~~~^^^
+IndexError: no such group
+
+Falha em Contas/2025\TOYOLEX IMB FUNI CELPE MES 01.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI CELPE MES 01.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI CELPE MES 03.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI CELPE MES 05.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI CELPE MES 06.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI CELPE MÊS 04.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI CELPE MÊS 07.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI CELPE MÊS 08.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI CELPE MÊS 09.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI CELPE MêS 10 (2).pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI CELPE MÊS 10.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI CELPE MêS 11.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI CELPE MÊS 12.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI FUNI CELPE MES 03.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI FUNI CELPE MES 04.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI FUNI CELPE MES 07.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI FUNI CELPE MÊS 05.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI FUNI CELPE MÊS 07.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI FUNI CELPE MÊS 08.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI FUNI CELPE MêS 11.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBI MES 02 CELPE.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBIRIBEIRA CELPE MÊS 09.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBIRIBEIRA CELPE MÊS 10.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+
+Falha em Contas/2025\TOYOLEX IMBIRIBEIRA CELPE MÊS 11.pdf:
+Traceback (most recent call last):
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\batch_processor.py", line 13, in process_file
+    final_data, _ = BillService.process_file(file_path)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\bruno\OneDrive - triOS College\Desktop\Projetos\energy-bill-reader\services\bill_service.py", line 57, in process_file
+    initial_data, confidence = extract_bill_data(raw_text, tables, pdf_path=file_path)
+                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: extract_bill_data() got an unexpected keyword argument 'pdf_path'
+

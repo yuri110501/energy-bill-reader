@@ -9,28 +9,18 @@ import json
 import csv
 from datetime import datetime
 from typing import Dict, Any, List
+from core.models import BillData
 
 STORAGE_DIR = os.environ.get("LOCAL_STORAGE", "storage")
 JSON_DIR = os.path.join(STORAGE_DIR, "json")
 CSV_PATH = os.path.join(STORAGE_DIR, "bills_data.csv")
 
-# Colunas padrão para o CSV baseadas no modelo BillData
-CSV_COLUMNS = [
-    "arquivo_origem",
-    "data_processamento",
-    "distribuidora",
-    "cpf_cnpj_titular",
-    "mes_referencia",
-    "data_vencimento",
-    "valor_total",
-    "leitura_atual",
-    "leitura_anterior",
-    "bandeira_tarifaria",
-    "tipo_fornecimento",
-    "classificacao_detalhada",
-    "consumo_ativo_na_ponta_te_preco_unitario",
-    "consumo_ativo_fora_ponta_te_preco_unitario",
-]
+# Colunas dinâmicas baseadas no modelo BillData + metadados de auditoria
+# Isso garante que a ordem do CSV seja SEMPRE a mesma do JSON definido no modelo.
+def get_csv_columns() -> List[str]:
+    audit_fields = ["arquivo_origem", "data_processamento"]
+    model_fields = list(BillData.model_fields.keys())
+    return audit_fields + model_fields
 
 class BillRepository:
     """
@@ -61,36 +51,27 @@ class BillRepository:
 
     @staticmethod
     def append_to_csv(bill_data: Dict[str, Any], original_filename: str = "desconhecido") -> None:
-        """Acumula os dados em um CSV único, evitando duplicatas."""
+        """
+        Acumula os dados em um CSV único. 
+        Filtro de duplicidade removido para permitir histórico de extrações.
+        """
         os.makedirs(STORAGE_DIR, exist_ok=True)
         file_exists = os.path.exists(CSV_PATH)
+        columns = get_csv_columns()
 
-        # Verificação de duplicidade por número da fatura ou arquivo_origem
-        is_duplicate = False
-        if file_exists:
-            with open(CSV_PATH, "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for existing_row in reader:
-                    # Se o arquivo tiver o mesmo nome
-                    if existing_row.get("arquivo_origem") == original_filename:
-                        is_duplicate = True
-                        break
-
-        if is_duplicate:
-            print(f"DEBUG (repository): Registro duplicado ignorado para o arquivo {original_filename}")
-            return
-
+        # Monta a linha para o CSV
         row = {
             "arquivo_origem": original_filename,
             "data_processamento": datetime.now().isoformat(),
         }
         
-        # Preenche os dados baseados no modelo (usando 'None' se vazio)
-        row.update({col: bill_data.get(col, "None") for col in CSV_COLUMNS
-                    if col not in ("arquivo_origem", "data_processamento")})
+        # Preenche os dados baseados no dicionário recebido (que segue o modelo BillData)
+        for col in BillData.model_fields.keys():
+            val = bill_data.get(col)
+            row[col] = val if val is not None else "None"
 
         with open(CSV_PATH, "a", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
+            writer = csv.DictWriter(f, fieldnames=columns)
             if not file_exists:
                 writer.writeheader()
             writer.writerow(row)
@@ -98,23 +79,10 @@ class BillRepository:
         print(f"DEBUG (repository): Linha adicionada ao CSV {CSV_PATH}")
 
     @staticmethod
-    def save_to_mongodb(bill_data: Dict[str, Any], original_filename: str) -> None:
-        """
-        [FUTURO] Implementação para salvar dados no MongoDB.
-        """
-        # Exemplo de implementação futura:
-        # collection = get_mongo_collection("energy_bills")
-        # document = {"arquivo_origem": original_filename, "data_processamento": datetime.utcnow(), **bill_data}
-        # collection.insert_one(document)
-        print("DEBUG (repository): [STUB] Salvando no MongoDB...")
-        pass
-
-    @staticmethod
     def save_all(bill_data: Dict[str, Any], original_filename: str) -> str:
-        """Salva a fatura em todos os locais configurados e retorna o caminho do JSON."""
+        """Salva a fatura em todos os locais configurados."""
         json_path = BillRepository.save_to_json(bill_data, original_filename)
         BillRepository.append_to_csv(bill_data, original_filename)
-        # BillRepository.save_to_mongodb(bill_data, original_filename)
         return json_path
 
     @staticmethod
