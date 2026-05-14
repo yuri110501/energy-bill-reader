@@ -40,10 +40,9 @@ PROMPT_TEMPLATE = (
     "- Preços Unitários (_preco_unitario): capture o valor da tarifa/preço unitário aplicado.\n"
     "- consumo_total_kwh: CALCULE a soma de 'Consumo Ativo Na Ponta(kWh)-TE' + 'Consumo Ativo Fora Ponta(kWh)-TE' + 'geracao_kwh' (se houver).\n"
     "- geracao_kwh: capture APENAS o valor numérico com sinal '-' indicando crédito de geração solar. Não confunda com CNPJ ou outros números.\n"
-    "- data_leitura_anterior, data_leitura_atual: capture no formato DD/MM/AAAA\n"
-    "- leitura_anterior, leitura_atual: são os valores do medidor (geralmente 5-6 dígitos). Não confunda com datas.\n"
+
     "- valor_total: busque na linha 'MM/AAAA <valor> DD/MM/AAAA' ou 'TOTAL A PAGAR R$ <valor>'\n"
-    "- codigo_cliente, numero_dias_faturamento, demanda_contratada: capture apenas os números\n"
+    "- codigo_cliente, demanda_contratada: capture apenas os números\n"
     "- classificacao_detalhada: capture a string completa (ex: 'B3 COMERCIAL')\n"
     "- data_vencimento: DD/MM/AAAA\n"
     "- mes_referencia: MM/AAAA\n"

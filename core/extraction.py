@@ -61,7 +61,6 @@ TABLE_ROW_MAP: Dict[str, Dict[str, str]] = {
     },
     "cons.reat exc.fponta": {
         "quantity": "consumo_reativo_exc_fora_ponta",
-        "price":    "consumo_reativo_exc_fora_ponta_preco_unitario",
     },
     "classificação:": {
         "value": "classificacao_detalhada"
@@ -114,10 +113,12 @@ def decide_profile(dist: str, classif: str, raw_text: str = "") -> str:
         # Prioridade 1: Classificação extraída
         if "A4" in classif_upper: return "Celpe_A"
         if "B3" in classif_upper: return "Celpe_B"
+        if "B1" in classif_upper: return "Celpe_B1"
         
         # Prioridade 2: Busca direta no texto bruto (fallback)
         if "A4" in raw_upper: return "Celpe_A"
         if "B3" in raw_upper: return "Celpe_B"
+        if "B1" in raw_upper: return "Celpe_B1"
         
     return "Generico"
 

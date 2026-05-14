@@ -25,15 +25,12 @@ class BillData(BaseModel):
     # --- Datas e Referência ---
     mes_referencia: Optional[str] = Field(None, description="Mês/ano de referência (MM/AAAA)")
     data_vencimento: Optional[str] = Field(None, description="Data de vencimento (DD/MM/AAAA)")
-    data_leitura_anterior: Optional[str] = Field(None, description="Data da leitura anterior")
-    data_leitura_atual: Optional[str] = Field(None, description="Data da leitura atual")
-    numero_dias_faturamento: Optional[str] = Field(None, description="Número de dias do faturamento")
+
 
     # --- Valores Financeiros e Geração ---
     valor_total: Optional[str] = Field(None, description="Valor total a pagar (R$)")
     geracao_kwh: Optional[str] = Field(None, description="Geração injetada (kWh)")
-    leitura_atual: Optional[str] = Field(None, description="Leitura do medidor atual")
-    leitura_anterior: Optional[str] = Field(None, description="Leitura do medidor anterior")
+
 
     # --- Demandas (Grupo A) ---
     demanda_ativa: Optional[str] = Field(None, description="Demanda ativa (kW)")
@@ -54,7 +51,7 @@ class BillData(BaseModel):
     consumo_reativo_exc_na_ponta_preco_unitario: Optional[str] = None
     
     consumo_reativo_exc_fora_ponta: Optional[str] = None
-    consumo_reativo_exc_fora_ponta_preco_unitario: Optional[str] = None
+
 
     def to_flat_dict(self) -> dict[str, str]:
         """Converte para dict com 'None' string ao invés de None Python."""
