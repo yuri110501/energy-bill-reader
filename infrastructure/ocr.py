@@ -90,31 +90,30 @@ def extract_structured(file_path: str) -> tuple[str, list]:
 
             print("DEBUG (ocr): Tentando extração via OCR (PyMuPDF + Tesseract)...")
             import fitz  # PyMuPDF
-            doc = fitz.open(file_path)
-            if len(doc) == 0:
-                return "", []
-
-            extracted_texts = []
-            # Limita a 3 páginas para evitar travamentos longos no OCR
-            max_pages = min(len(doc), 3)
-
-            for page_num in range(max_pages):
-                page = doc.load_page(page_num)
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                from io import BytesIO
-                img_data = pix.tobytes("png")
-                img_page = Image.open(BytesIO(img_data))
-                img_page = _preprocess_image(img_page)
-
-                custom_config = r"--oem 3 --psm 6 -l por+eng"
-                page_text = pytesseract.image_to_string(img_page, config=custom_config)
-                extracted_texts.append(page_text)
-
-            doc.close()
-            full_text = "\n\n".join(extracted_texts)
-            print(f"DEBUG (ocr): Extraído via TESSERACT PDF ({len(full_text)} chars, {max_pages} pág.)")
-            # PDFs scaneados não têm tabelas estruturadas
-            return full_text, []
+            with fitz.open(file_path) as doc:
+                if len(doc) == 0:
+                    return "", []
+    
+                extracted_texts = []
+                # Limita a 3 páginas para evitar travamentos longos no OCR
+                max_pages = min(len(doc), 3)
+    
+                for page_num in range(max_pages):
+                    page = doc.load_page(page_num)
+                    pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                    from io import BytesIO
+                    img_data = pix.tobytes("png")
+                    img_page = Image.open(BytesIO(img_data))
+                    img_page = _preprocess_image(img_page)
+    
+                    custom_config = r"--oem 3 --psm 6 -l por+eng"
+                    page_text = pytesseract.image_to_string(img_page, config=custom_config)
+                    extracted_texts.append(page_text)
+    
+                full_text = "\n\n".join(extracted_texts)
+                print(f"DEBUG (ocr): Extraído via TESSERACT PDF ({len(full_text)} chars, {max_pages} pág.)")
+                # PDFs scaneados não têm tabelas estruturadas
+                return full_text, []
 
         else:
             # Imagens (JPG, PNG)
