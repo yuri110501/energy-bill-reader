@@ -85,7 +85,7 @@ REGEX_RULES = {
 
     "Generico": {
         "metadata": {
-            "distribuidora": r"(?i)^(COMPANHIA\s+ENERGÉTICA\s+DE\s+PERNAMBUCO|CELPE|NEOENERGIA|CEMIG|ENEL|COPEL|COMPANHIA\s+ENEGERTICA\s+DO\s+RIO\s+GRANDE\s+DO\s+NORTE)",
+            "distribuidora": r"(?i)(COMPANHIA\s+ENERGÉTICA\s+DE\s+PERNAMBUCO|CELPE|NEOENERGIA|CEMIG|ENEL|COPEL|COMPANHIA\s+ENEGERTICA\s+DO\s+RIO\s+GRANDE\s+DO\s+NORTE)",
             "mes_referencia": r"(?i)(?:Mês/Ano|Referência|Período)[\s\S]*?(\d{2}/\d{4})",
             "data_vencimento": r"(?i)(?:Vencimento|Data Vencto)[\s\S]*?(\d{2}/\d{2}/\d{4})",
             "classificacao_detalhada": r"(?:CLASSIFICAÇÃO:\s*([^\n]*?)|(B3\s+COMERCIAL|A4\s+HORO))(?=\s{2,}|TIPO DE FORNECIMENTO|$)",

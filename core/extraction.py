@@ -115,10 +115,13 @@ def decide_profile(dist: str, classif: str, raw_text: str = "") -> str:
         if "B3" in classif_upper: return "Neoenergia_B"
         if "B1" in classif_upper: return "Neoenergia_B1"
         
+        '''
+        Essa funcionalidade precisa ser implementada
         # Prioridade 2: Busca direta no texto bruto (fallback)
         if "A4" in raw_upper: return "Neoenergia_A"
         if "B3" in raw_upper: return "Neoenergia_B"
         if "B1" in raw_upper: return "Neoenergia_B1"
+        '''
         
     return "Generico"
 
