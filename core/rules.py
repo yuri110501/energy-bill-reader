@@ -5,7 +5,7 @@ Centraliza as regras de extração (Regex) por perfil de distribuidora/fatura.
 """
 
 REGEX_RULES = {
-    "Celpe_A": {
+    "Neoenergia_A": {
         "metadata": {
             "distribuidora": r"(?i)^(COMPANHIA\s+ENERGÉTICA\s+DE\s+PERNAMBUCO|CELPE|NEOENERGIA)",
             "codigo_cliente": r"(?:C[ÓO]?DIGO\s+DO\s+CLIENTE|CONTA CONTRATO)[\s\S]*?(\d{10})",
@@ -38,9 +38,9 @@ REGEX_RULES = {
         }
     },
     
-    "Celpe_B": {
+    "Neoenergia_B": {
         "metadata": {
-            "distribuidora": r"(?i)^(COMPANHIA\s+ENERGÉTICA\s+DE\s+PERNAMBUCO|CELPE|NEOENERGIA)",
+            "distribuidora": r"(?i)^(COMPANHIA\s+ENERGÉTICA\s+DE\s+PERNAMBUCO|CELPE|NEOENERGIA|RIO GRANDE DO NORTE|COSERN)",
             "codigo_cliente": r"(?:C[ÓO]?DIGO|INSTALAO)[\s\S]{1,150}?\b(70\d{8})\b|\b(70\d{8})\b[\s\S]{1,150}?(?:C[ÓO]?DIGO|INSTALAO)",
             "mes_referencia": r"(?:REF:MÊS/ANO|MÊS/ANO)[\s\S]{1,50}?(\d{2}/\d{4})",
             "data_vencimento": r"VENCIMENTO[\s\S]{1,100}?(\d{2}/\d{2}/\d{4})",
@@ -61,7 +61,7 @@ REGEX_RULES = {
         }
     },
 
-    "Celpe_B1": {
+    "Neoenergia_B1": {
         "metadata": {
             "distribuidora": r"(?i)^(COMPANHIA\s+ENERGÉTICA\s+DE\s+PERNAMBUCO|CELPE|NEOENERGIA)",
             "codigo_cliente": r"(?:CÓDIGO\s+DO\s+CLIENTE)\D*(\d{10})|(\d{10})\D*CÓDIGO\s+DO\s+CLIENTE",
@@ -85,7 +85,7 @@ REGEX_RULES = {
 
     "Generico": {
         "metadata": {
-            "distribuidora": r"(?i)^(COMPANHIA\s+ENERGÉTICA\s+DE\s+PERNAMBUCO|CELPE|NEOENERGIA|CEMIG|ENEL|COPEL)",
+            "distribuidora": r"(?i)^(COMPANHIA\s+ENERGÉTICA\s+DE\s+PERNAMBUCO|CELPE|NEOENERGIA|CEMIG|ENEL|COPEL|COMPANHIA\s+ENEGERTICA\s+DO\s+RIO\s+GRANDE\s+DO\s+NORTE)",
             "mes_referencia": r"(?i)(?:Mês/Ano|Referência|Período)[\s\S]*?(\d{2}/\d{4})",
             "data_vencimento": r"(?i)(?:Vencimento|Data Vencto)[\s\S]*?(\d{2}/\d{2}/\d{4})",
             "classificacao_detalhada": r"(?:CLASSIFICAÇÃO:\s*([^\n]*?)|(B3\s+COMERCIAL|A4\s+HORO))(?=\s{2,}|TIPO DE FORNECIMENTO|$)",

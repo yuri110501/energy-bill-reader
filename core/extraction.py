@@ -107,18 +107,18 @@ def decide_profile(dist: str, classif: str, raw_text: str = "") -> str:
     classif_upper = classif.upper() if classif else ""
     raw_upper = raw_text.upper() if raw_text else ""
     
-    is_celpe = any(k in dist_upper for k in ["CELPE", "PERNAMBUCO", "NEOENERGIA"])
+    is_neoenergia = any(k in dist_upper for k in ["CELPE", "PERNAMBUCO", "NEOENERGIA", "RIO GRANDE DO NORTE", "COSERN", "BAHIA","COELBA"])
     
-    if is_celpe:
+    if is_neoenergia:
         # Prioridade 1: Classificação extraída
-        if "A4" in classif_upper: return "Celpe_A"
-        if "B3" in classif_upper: return "Celpe_B"
-        if "B1" in classif_upper: return "Celpe_B1"
+        if "A4" in classif_upper: return "Neoenergia_A"
+        if "B3" in classif_upper: return "Neoenergia_B"
+        if "B1" in classif_upper: return "Neoenergia_B1"
         
         # Prioridade 2: Busca direta no texto bruto (fallback)
-        if "A4" in raw_upper: return "Celpe_A"
-        if "B3" in raw_upper: return "Celpe_B"
-        if "B1" in raw_upper: return "Celpe_B1"
+        if "A4" in raw_upper: return "Neoenergia_A"
+        if "B3" in raw_upper: return "Neoenergia_B"
+        if "B1" in raw_upper: return "Neoenergia_B1"
         
     return "Generico"
 

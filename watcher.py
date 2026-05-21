@@ -23,14 +23,21 @@ class BatchTriggerHandler(FileSystemEventHandler):
         self.is_processing = False  # Flag para evitar loops/gatilhos concorrentes durante o lote
 
     def on_created(self, event):
-        # Ignora diretórios e foca apenas em arquivos .pdf (case-insensitive)
-        if event.is_directory or not event.src_path.lower().endswith(".pdf"):
-            return
-            
-        if self.is_processing:
-            print(f"[WATCHER] Processamento já em andamento. Ignorando gatilho para: {event.src_path}")
-            return
-            
+        # REGRA 1: Novo diretório em qualquer nível → disparar batch
+        if event.is_directory:
+            print(f"\n[WATCHER] Novo diretório detectado: {event.src_path}")
+    
+        # REGRA 2: Novo PDF APENAS na raiz do WATCH_DIR → disparar batch
+        elif event.src_path.lower().endswith(".pdf"):
+            parent_dir = os.path.dirname(os.path.abspath(event.src_path))
+            watch_dir_abs = os.path.abspath(self.watch_dir)
+            if parent_dir != watch_dir_abs:
+                return  # PDF em subpasta → ignorar silenciosamente
+            print(f"\n[WATCHER] Novo PDF detectado na raiz: {event.src_path}")
+    
+        # REGRA 3: Qualquer outro tipo de arquivo → ignorar
+        else:
+            return        
         print(f"\n[WATCHER] Gatilho ativado por novo arquivo: {event.src_path}")
         
         # Garante que o arquivo que disparou o evento foi completamente gravado/salvo no disco
