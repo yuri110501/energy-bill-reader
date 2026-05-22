@@ -83,9 +83,55 @@ REGEX_RULES = {
         }
     },
 
+    "Equatorial": {
+        "METADATA": {
+            "codigo_cliente": r"(\d{1,3}\.\d{3}\.\d{3}\.\d{3}-\d{2})",
+            "data_vencimento": r"((?:\d{2})/(?:\d{2})/(?:\d{4}))\s+R\$",  # DD/MM/YYYY seguido de R$
+            "mes_referencia": r"REFERÊNCIA[\s\S]*?((?:0[1-9]|1[0-2])/\d{4})",
+            "tipo_fornecimento": r"TIPO\s+DE\s+FORNECIMENTO:\s+(\w+)",
+        },
+        "FINANCIAL": {
+            "valor_total": r"R\$\s+([\d\.]+,\d{2})",  # R$ seguido do valor            
+        },
+        "TECHNICAL": {
+            "geracao_kwh": r"Consumo Compensado FP\s*\(kWh\)\s+([\d\.]+,\d{2})",
+            "demanda_ativa": r"Demanda\s+Contratada\s+Ú?nica\s*\(kW\)\s*:\s*([\d\.]+,\d{2})",
+            "consumo_ativo_na_ponta_tusd": r"Consumo Ponta\s*\(kWh\)\s+([\d\.]+,\d{2})",
+            "consumo_ativo_fora_ponta_tusd": r"Consumo Fora Ponta\s*\(kWh\)\s+([\d\.]+,\d{2})",
+            "consumo_reativo_exc_fora_ponta": r"Consumo Reativo Excedente FP\s*\(kVAr\)\s+([\d\.]+,\d{2})",
+        },
+        "TARIFFS": {
+            "demanda_ativa_preco_unitario": r"Demanda Ativa\s*\(kW\)\s+[\d\.]+,\d{2}\s+([\d,]+)",
+            "consumo_ativo_na_ponta_tusd_preco_unitario": r"Consumo Ponta\s*\(kWh\)\s+[\d\.]+,\d{2}\s+([\d,]+)",
+            "consumo_ativo_fora_ponta_tusd_preco_unitario": r"Consumo Fora Ponta\s*\(kWh\)\s+[\d\.]+,\d{2}\s+([\d,]+)",
+            "consumo_reativo_exc_fora_ponta_preco_unitario": r"Consumo Reativo Excedente FP\s*\(kVAr\)\s+[\d\.]+,\d{2}\s+([\d,]+)",
+        }
+    },
+    "Ambar": {
+        "METADATA": {
+            "codigo_cliente": r"(\d{7}-\d)",
+            "mes_referencia": r"^\s*\d+-\d\s+([0-9]{2}/[0-9]{4})",
+            "data_vencimento": r"(?:Vencimento\s+)(\d{2}/\d{2}/\d{4})|(\d{2}/\d{2}/\d{4})\s+R\$",
+            "valor_total": r"R\$\s+([\d\.]+,\d{2})",
+        },
+        "TECHNICAL": {
+            "demanda_ativa": r"D\.\s+Ctda\s+Pta:\s+(\d+)",
+            "consumo_ativo_na_ponta_tusd": r"Consumo\s+Ponta\s+(\d+(?:\.\d+)*)\s+kWh",
+            "consumo_ativo_fora_ponta_tusd": r"Consumo\s+F/Ponta\s+(\d+(?:\.\d+)*)\s+kWh(?:\s+a\s+[\d,]+)?",
+            "consumo_reativo_exc_na_ponta": r"En\s+R\s+Exc\s+Ponta\s+(\d+(?:\.\d+)*)\s+kWh",
+            "consumo_reativo_exc_fora_ponta": r"En\s+R\s+Exc\s+F/Ponta\s+(\d+(?:\.\d+)*)\s+kWh",
+        },
+        "TARIFFS": {
+            "demanda_ativa_preco_unitario": r"Demanda\s+\d+\s+kW\s+a\s+([\d,]+)",
+            "consumo_ativo_na_ponta_tusd_preco_unitario": r"Consumo\s+Ponta\s+[\d\.]+\s+kWh\s+a\s+([\d,]+)",
+            "consumo_ativo_fora_ponta_tusd_preco_unitario": r"Consumo\s+F/Ponta\s+[\d\.]+\s+kWh\s+a\s+([\d,]+)",
+            "consumo_reativo_exc_na_ponta_preco_unitario": r"En\s+R\s+Exc\s+Ponta\s+[\d\.]+\s+kWh\s+a\s+([\d,]+)",
+        }
+    },
+
     "Generico": {
         "metadata": {
-            "distribuidora": r"(?i)(COMPANHIA\s+ENERGÉTICA\s+DE\s+PERNAMBUCO|CELPE|NEOENERGIA|CEMIG|ENEL|COPEL|COMPANHIA\s+ENEGERTICA\s+DO\s+RIO\s+GRANDE\s+DO\s+NORTE)",
+            "distribuidora": r"(?i)(COMPANHIA\s+ENERGÉTICA\s+DE\s+PERNAMBUCO|CELPE|NEOENERGIA|CEMIG|ENEL|COPEL|COMPANHIA\s+ENEGERTICA\s+DO\s+RIO\s+GRANDE\s+DO\s+NORTE|EQUATORIAL\s+MARANHÃO\s+DISTRIB.\s+DE\s+ENERGIA\s+S.A.|AMBAR\s+ENERGIA\s+-\s+AM|AMAZONAS\s+ENERGIA)",
             "mes_referencia": r"(?i)(?:Mês/Ano|Referência|Período)[\s\S]*?(\d{2}/\d{4})",
             "data_vencimento": r"(?i)(?:Vencimento|Data Vencto)[\s\S]*?(\d{2}/\d{2}/\d{4})",
             "classificacao_detalhada": r"(?:CLASSIFICAÇÃO:\s*([^\n]*?)|(B3\s+COMERCIAL|A4\s+HORO))(?=\s{2,}|TIPO DE FORNECIMENTO|$)",

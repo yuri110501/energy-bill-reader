@@ -108,6 +108,12 @@ def decide_profile(dist: str, classif: str, raw_text: str = "") -> str:
     raw_upper = raw_text.upper() if raw_text else ""
     
     is_neoenergia = any(k in dist_upper for k in ["CELPE", "PERNAMBUCO", "NEOENERGIA", "RIO GRANDE DO NORTE", "COSERN", "BAHIA","COELBA"])
+    is_equatorial = any(k in dist_upper for k in ["EQUATORIAL"])
+    is_ambar = any(k in dist_upper for k in ["AMBAR", "AMAZONAS ENERGIA"])
+
+    if is_ambar: return "Ambar"
+
+    if is_equatorial: return "Equatorial"
     
     if is_neoenergia:
         # Prioridade 1: Classificação extraída
@@ -134,7 +140,7 @@ def apply_rules(text: str, profile: str) -> Dict[str, Any]:
         for field, pattern in fields.items():
             # Usa DOTALL apenas para o código do cliente se necessário, 
             # ou lidamos com [\s\S] no pattern para ser universal
-            match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+            match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE | re.DOTALL)
             if match:
                 try:
                     val = None
