@@ -20,6 +20,10 @@ CSV_PATH = os.path.join(STORAGE_DIR, "bills_data.csv")
 def get_csv_columns() -> List[str]:
     audit_fields = ["arquivo_origem", "data_processamento"]
     model_fields = list(BillData.model_fields.keys())
+    # Garante que ID_sof é a primeira coluna dos dados (já vem primeiro no modelo, mas garante ordem)
+    if "ID_sof" in model_fields:
+        model_fields.remove("ID_sof")
+        model_fields.insert(0, "ID_sof")
     return audit_fields + model_fields
 
 class BillRepository:

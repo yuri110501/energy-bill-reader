@@ -15,6 +15,7 @@ class BillData(BaseModel):
     A ordem dos campos aqui define a ordem no JSON final.
     """
     # --- Identificação e Classificação ---
+    ID_sof: Optional[str] = Field(None, description="Identificador SOF (mapeado de codigo_cliente)")
     distribuidora: Optional[str] = Field(None, description="Nome da distribuidora de energia")
     cpf_cnpj_titular: Optional[str] = Field(None, description="CPF ou CNPJ do titular da conta")
     codigo_cliente: Optional[str] = Field(None, description="Código do cliente na distribuidora")
