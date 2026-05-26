@@ -23,4 +23,4 @@ Thumbs.db
 *.pdf
 *.json
 *.txt
-scratch/
+tests/

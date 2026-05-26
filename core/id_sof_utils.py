@@ -17,11 +17,25 @@ def load_uc_mapping(path: Optional[str] = None) -> dict:
         p = path or os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "uc_mapping.json")
         try:
             with open(p, "r", encoding="utf-8") as fh:
-                _UC_MAP = json.load(fh)
+                raw_map = json.load(fh)
         except FileNotFoundError:
             print(f"AVISO (id_sof_utils): uc_mapping.json não encontrado em {p}")
-            _UC_MAP = {}
+            raw_map = {}
+
+        _UC_MAP = {}
+        for codigo, id_sof in raw_map.items():
+            _UC_MAP[str(codigo)] = id_sof
+
+            normalized_codigo = _normalize_codigo_cliente(codigo)
+            if normalized_codigo and normalized_codigo not in _UC_MAP:
+                _UC_MAP[normalized_codigo] = id_sof
+
+            if normalized_codigo.isdigit():
+                stripped_codigo = normalized_codigo.lstrip("0")
+                if stripped_codigo and stripped_codigo not in _UC_MAP:
+                    _UC_MAP[stripped_codigo] = id_sof
     return _UC_MAP
+
 
 def _normalize_codigo_cliente(codigo: str) -> str:
     """Normaliza codigo_cliente para aumentar chance de match no mapping."""
