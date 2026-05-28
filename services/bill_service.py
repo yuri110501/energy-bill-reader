@@ -15,6 +15,7 @@ from infrastructure.ocr import extract_structured
 from core.extraction import extract_bill_data, preprocess_text
 from core.refinement import refine_data
 from infrastructure.repository import BillRepository
+from core.id_sof_utils import get_id_sof_from_codigo
 
 # Threshold abaixo do qual a IA é acionada como fallback
 AI_CONFIDENCE_THRESHOLD = float(os.environ.get("AI_CONFIDENCE_THRESHOLD", "0.5"))
@@ -74,7 +75,16 @@ class BillService:
             from core.models import BillData
             final_dict = BillData.from_raw_dict(initial_data).to_flat_dict()
 
-        # 4. Persistência
+        # 4. Resolução do ID_sof a partir do codigo_cliente extraído.
+        # Este passo é centralizado aqui para cobrir tanto o caminho via IA
+        # quanto o caminho de extração local, garantindo consistência.
+        codigo = final_dict.get("codigo_cliente")
+        if codigo and codigo not in ("None", ""):
+            id_sof = get_id_sof_from_codigo(codigo)
+            if id_sof:
+                final_dict["ID_sof"] = id_sof
+
+        # 5. Persistência
         json_path = BillRepository.save_all(final_dict, filename)
 
         return final_dict, json_path
