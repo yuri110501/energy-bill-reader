@@ -19,8 +19,15 @@ dataset/
 .DS_Store
 Thumbs.db
 
-# Arquivos de treinamento
+# Arquivos de treinamento e dados brutos
 *.pdf
-*.json
 *.txt
-tests/
+!requirements.txt
+!pytest.ini
+*.json
+!data/*.json
+
+# Ignorar dados sensíveis em testes, mas NÃO a pasta de testes
+tests/**/*.pdf
+tests/**/*.txt
+tests/scratch/
