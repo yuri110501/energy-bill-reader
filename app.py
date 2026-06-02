@@ -64,10 +64,6 @@ def run_batch_processing(folder_path: str, output_file: str = "batch_results.txt
     success_count = 0
     error_count = 0
     
-    # Pasta de destino para faturas processadas com sucesso
-    processed_dir = os.path.join("storage", "processadas")
-    os.makedirs(processed_dir, exist_ok=True)
-    
     # Abre o arquivo de saída em modo de escrita, garantindo codificação UTF-8
     with open(output_file, "w", encoding="utf-8") as out_file:
         for file_path in pdf_files:
@@ -78,29 +74,6 @@ def run_batch_processing(folder_path: str, output_file: str = "batch_results.txt
                 out_file.write(line + "\n")
                 out_file.flush()  # Força gravação em disco imediata para tolerância a falhas
                 success_count += 1
-                
-                # Mover faturas processadas com sucesso para a pasta storage/processadas/
-                filename = os.path.basename(file_path)
-                dest_path = os.path.join(processed_dir, filename)
-                
-                # Evita colisões de nomes adicionando um timestamp se o arquivo já existir no destino
-                if os.path.exists(dest_path):
-                    name, ext = os.path.splitext(filename)
-                    timestamp = int(time.time())
-                    dest_path = os.path.join(processed_dir, f"{name}_{timestamp}{ext}")
-                    
-                try:
-                    # Copia o arquivo processado com sucesso para o storage de destino
-                    shutil.copy(file_path, dest_path)
-                    print(f"INFO: Arquivo processado copiado para: {dest_path}", flush=True)
-                    try:
-                        # Remove explicitamente o arquivo original da pasta monitorada
-                        os.remove(file_path)
-                        print(f"INFO: Arquivo original removido com sucesso de: {file_path}", flush=True)
-                    except Exception as rm_err:
-                        print(f"ERROR: Falha ao remover o arquivo original {file_path}: {rm_err}", file=sys.stderr, flush=True)
-                except Exception as copy_err:
-                    print(f"ERROR: Falha ao copiar arquivo {file_path} para {dest_path}: {copy_err}", file=sys.stderr, flush=True)
             else:
                 error_count += 1
                 

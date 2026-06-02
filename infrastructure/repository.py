@@ -8,7 +8,7 @@ import os
 import json
 import csv
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from core.models import BillData
 
 STORAGE_DIR = os.environ.get("LOCAL_STORAGE", "storage")
@@ -38,7 +38,7 @@ class BillRepository:
     """
     
     @staticmethod
-    def save_to_json(bill_data: Dict[str, Any], original_filename: str) -> str:
+    def save_to_json(bill_data: Dict[str, Any], original_filename: str, processed_pdf_path: Optional[str] = None) -> str:
         """Salva os dados em formato JSON."""
         os.makedirs(JSON_DIR, exist_ok=True)
 
@@ -49,6 +49,7 @@ class BillRepository:
 
         output = {
             "arquivo_origem": original_filename,
+            "processed_pdf_path": processed_pdf_path if processed_pdf_path is not None else "None",
             "data_processamento": datetime.now().isoformat(),
             "dados": bill_data,
         }
@@ -89,9 +90,9 @@ class BillRepository:
         print(f"DEBUG (repository): Linha adicionada ao CSV {CSV_PATH}")
 
     @staticmethod
-    def save_all(bill_data: Dict[str, Any], original_filename: str) -> str:
+    def save_all(bill_data: Dict[str, Any], original_filename: str, processed_pdf_path: Optional[str] = None) -> str:
         """Salva a fatura em todos os locais configurados."""
-        json_path = BillRepository.save_to_json(bill_data, original_filename)
+        json_path = BillRepository.save_to_json(bill_data, original_filename, processed_pdf_path=processed_pdf_path)
         BillRepository.append_to_csv(bill_data, original_filename)
         return json_path
 

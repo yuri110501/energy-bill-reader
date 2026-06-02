@@ -84,8 +84,23 @@ class BillService:
             if id_sof:
                 final_dict["ID_sof"] = id_sof
 
-        # 5. Persistência
-        json_path = BillRepository.save_all(final_dict, filename)
+        # 5. Movimentação estruturada do PDF processado (arquivamento físico definitivo)
+        from infrastructure.storage import move_processed_pdf
+        processed_pdf_path = None
+        try:
+            processed_pdf_path = move_processed_pdf(
+                file_path, 
+                final_dict.get("ID_sof"), 
+                final_dict.get("mes_referencia")
+            )
+            # Registra o caminho final nos dados de retorno
+            final_dict["processed_pdf_path"] = processed_pdf_path
+        except Exception as err:
+            # Captura erros de I/O para evitar interromper o fluxo transacional de gravação dos dados estruturados
+            print(f"ERROR (service): Falha ao mover PDF processado {filename}: {err}")
+
+        # 6. Persistência de dados consolidada
+        json_path = BillRepository.save_all(final_dict, filename, processed_pdf_path=processed_pdf_path)
 
         return final_dict, json_path
 
