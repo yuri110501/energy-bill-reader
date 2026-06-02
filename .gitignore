@@ -27,7 +27,5 @@ Thumbs.db
 *.json
 !data/*.json
 
-# Ignorar dados sensíveis em testes, mas NÃO a pasta de testes
-tests/**/*.pdf
-tests/**/*.txt
-tests/scratch/
+# Ignorar a pasta de testes
+tests/
