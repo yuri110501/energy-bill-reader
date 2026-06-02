@@ -79,3 +79,49 @@ O pipeline captura mais de 30 campos, incluindo métricas críticas de auditoria
 
 ---
 > **Mentor Note:** A migração para `rules.py` transforma o código em um produto escalável. Agora, o desenvolvedor não precisa mais mexer na lógica do motor para suportar novas faturas, apenas "ensinar" novos padrões ao dicionário de regras.
+
+---
+
+## 🐳 Setup e Execução via Docker (Recomendado para Novos Computadores)
+
+Para facilitar a execução em computadores que não possuem ambiente de programação configurado (sem necessidade de instalar Python, dependências ou Tesseract OCR), o projeto conta com um ambiente isolado em Docker.
+
+### Passo a Passo
+
+1. **Clonar o Repositório**
+   Abra o terminal e clone o projeto:
+   ```bash
+   git clone https://github.com/yuri110501/energy-bill-reader.git
+   cd energy-bill-reader
+   ```
+
+2. **Configurar as Variáveis de Ambiente**
+   Renomeie o arquivo de exemplo para o formato definitivo:
+   - No Windows: `ren .env.example .env` (ou copie manualmente renomeando)
+   - No Linux/macOS: `cp .env.example .env`
+   
+   Abra o arquivo `.env` gerado com um editor de texto simples e insira sua chave na variável `GOOGLE_API_KEY`.
+
+3. **Construir o Ambiente Docker**
+   Certifique-se de que o **Docker Desktop** (ou Docker Engine) esteja em execução. No terminal, rode:
+   ```bash
+   docker compose build
+   ```
+   *(Este passo só demora na primeira vez, pois ele compila o Tesseract OCR e pacotes de idioma em português).*
+
+4. **Escolher o Modo de Execução**
+   O docker-compose possui múltiplos serviços configurados:
+   
+   - **Modo Watcher (Monitoramento Contínuo):**
+     Monitora ativamente a pasta `Contas/` no seu computador. Qualquer PDF arrastado para essa pasta será processado em tempo real.
+     ```bash
+     docker compose up watcher
+     ```
+   
+   - **Modo Batch (Processamento em Lote Imediato):**
+     Processa de uma só vez todas as faturas atuais da pasta `Contas/` e encerra.
+     ```bash
+     docker compose run --rm batch
+     ```
+
+Todos os resultados estruturados e CSVs analíticos serão salvos diretamente na pasta local `storage/`, que será criada automaticamente no diretório do projeto.
