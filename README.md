@@ -99,15 +99,13 @@ Para facilitar a execução em computadores que não possuem ambiente de program
    Renomeie o arquivo de exemplo para o formato definitivo:
    - No Windows: `ren .env.example .env` (ou copie manualmente renomeando)
    - No Linux/macOS: `cp .env.example .env`
-   
-   Abra o arquivo `.env` gerado com um editor de texto simples e insira sua chave na variável `GOOGLE_API_KEY`.
 
 3. **Construir o Ambiente Docker**
    Certifique-se de que o **Docker Desktop** (ou Docker Engine) esteja em execução. No terminal, rode:
    ```bash
    docker compose build
    ```
-   *(Este passo só demora na primeira vez, pois ele compila o Tesseract OCR e pacotes de idioma em português).*
+   *(Este passo só demora na primeira vez, pois ele compilar o Tesseract OCR e pacotes de idioma em português).*
 
 4. **Escolher o Modo de Execução**
    O docker-compose possui múltiplos serviços configurados:

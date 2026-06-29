@@ -1,4 +1,4 @@
-version: '3.8'
+#version: '3.8'
 
 services:
   watcher:
@@ -8,16 +8,16 @@ services:
     restart: unless-stopped
     volumes:
       # Mapeia a pasta local './Contas' do host para a pasta interna '/app/Contas' do container
-      - ${WATCH_DIR_HOST:-./Contas}:/app/Contas
+      - ${WATCH_DIR:-./Contas}:/app/Contas
       # Mapeia o storage local para que os CSVs e JSONs persistam na máquina
-      - ./storage:/app/storage
+      - ${LOCAL_STORAGE:-./storage}:/app/storage
       # Mapeia os mapeamentos locais para customização em tempo de execução
       - ./data:/app/data
       # Lê variáveis de ambiente a partir do arquivo local .env
       - .env:/app/.env
     environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - GEMINI_MODEL=${GEMINI_MODEL}
+      #- GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      #- GEMINI_MODEL=${GEMINI_MODEL}
       - LOCAL_STORAGE=/app/storage
       - WATCH_DIR=/app/Contas
 
@@ -27,8 +27,8 @@ services:
     build: .
     container_name: energy-bill-batch
     volumes:
-      - ${WATCH_DIR_HOST:-./Contas}:/app/Contas
-      - ./storage:/app/storage
+      - ${WATCH_DIR:-./Contas}:/app/Contas
+      - ${LOCAL_STORAGE:-./storage}:/app/storage
       - ./data:/app/data
       - .env:/app/.env
     command: ["python", "batch_processor.py", "/app/Contas", "/app/storage/batch_results.txt"]
@@ -43,7 +43,7 @@ services:
     build: .
     container_name: energy-bill-tests
     volumes:
-      - ${WATCH_DIR_HOST:-./Contas}:/app/Contas
+      - ${WATCH_DIR:-./Contas}:/app/Contas
       - ./tests:/app/tests
       - ./data:/app/data
       - .env:/app/.env
