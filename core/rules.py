@@ -85,10 +85,11 @@ REGEX_RULES = {
 
     "Equatorial": {
         "METADATA": {
-            "codigo_cliente": r"(\d{1,3}\.\d{3}\.\d{3}\.\d{3}-\d{2})",
+            "codigo_cliente": r"INSTALAÇÃO\s*:\s*(\d+)",
             "data_vencimento": r"((?:\d{2})/(?:\d{2})/(?:\d{4}))\s+R\$",  # DD/MM/YYYY seguido de R$
             "mes_referencia": r"REFERÊNCIA[\s\S]*?((?:0[1-9]|1[0-2])/\d{4})",
             "tipo_fornecimento": r"TIPO\s+DE\s+FORNECIMENTO:\s+(\w+)",
+            "bandeira_tarifaria": r"(?:bandeira|Band\.\s*Tarif\.)\s*[:\.]?\s*([A-Za-zÀ-ÿ]+)",
         },
         "FINANCIAL": {
             "valor_total": r"R\$\s+([\d\.]+,\d{2})",  # R$ seguido do valor            
@@ -96,7 +97,7 @@ REGEX_RULES = {
         "TECHNICAL": {
             "geracao_kwh": r"Consumo Compensado FP\s*\(kWh\)\s+([\d\.]+,\d{2})",
             "demanda_ativa": r"Demanda\s+Contratada\s+Ú?nica\s*\(kW\)\s*:\s*([\d\.]+,\d{2})",
-            "consumo_ativo_na_ponta_tusd": r"Consumo Ponta\s*\(kWh\)\s+([\d\.]+,\d{2})",
+            "consumo_ativo_na_ponta_tusd": r"Consumo\s+Fora\s+Ponta\s+\(kWh\)\s+(\d{1,3}(?:\.\d{3})*,\d{2})(?:[\s\S]*?Consumo\s+Compensado\s+FP\s+\(kWh\)\s+(\d{1,3}(?:\.\d{3})*,\d{2}))?",
             "consumo_ativo_fora_ponta_tusd": r"Consumo Fora Ponta\s*\(kWh\)\s+([\d\.]+,\d{2})",
             "consumo_reativo_exc_fora_ponta": r"Consumo Reativo Excedente FP\s*\(kVAr\)\s+([\d\.]+,\d{2})",
         },
@@ -117,7 +118,7 @@ REGEX_RULES = {
         "TECHNICAL": {
             "demanda_ativa": r"D\.\s+Ctda\s+Pta:\s+(\d+)",
             "consumo_ativo_na_ponta_tusd": r"Consumo\s+Ponta\s+(\d+(?:\.\d+)*)\s+kWh",
-            "consumo_ativo_fora_ponta_tusd": r"Consumo\s+F/Ponta\s+(\d+(?:\.\d+)*)\s+kWh(?:\s+a\s+[\d,]+)?",
+            "consumo_ativo_fora_ponta_tusd": r"Consumo\s+F/Ponta\s+(\d+(?:\.\d+)*)\s+kWh(?:[\s\S]*?Consumo\s+F/Ponta\s+(\d+(?:\.\d+)*)\s+kWh)?",
             "consumo_reativo_exc_na_ponta": r"En\s+R\s+Exc\s+Ponta\s+(\d+(?:\.\d+)*)\s+kWh",
             "consumo_reativo_exc_fora_ponta": r"En\s+R\s+Exc\s+F/Ponta\s+(\d+(?:\.\d+)*)\s+kWh",
         },

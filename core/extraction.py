@@ -142,16 +142,39 @@ def apply_rules(text: str, profile: str) -> Dict[str, Any]:
             # ou lidamos com [\s\S] no pattern para ser universal
             match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE | re.DOTALL)
             if match:
-                try:
-                    val = None
-                    for i in range(1, len(match.groups()) + 1):
-                        if match.group(i):
-                            val = match.group(i).strip()
-                            break
-                    if not val:
+                val = None
+
+                if profile == "Ambar" and field == "consumo_ativo_fora_ponta_tusd":
+                    first = match.group(1).strip() if match.group(1) else None
+                    second = None
+                    if len(match.groups()) >= 2:
+                        second = match.group(2).strip() if match.group(2) else None
+
+                    if second:
+                        normalized_second = _normalize_number(second)
+                        if normalized_second:
+                            extracted["geracao_kwh"] = normalized_second
+
+                        normalized_first = _normalize_number(first) if first else None
+                        if normalized_first is not None and normalized_second is not None:
+                            val = str(float(normalized_first) + float(normalized_second))
+                        elif normalized_first is not None:
+                            val = normalized_first
+                        else:
+                            val = normalized_second
+                    else:
+                        val = first or match.group(0).strip()
+
+                else:
+                    try:
+                        for i in range(1, len(match.groups()) + 1):
+                            if match.group(i):
+                                val = match.group(i).strip()
+                                break
+                        if not val:
+                            val = match.group(0).strip()
+                    except IndexError:
                         val = match.group(0).strip()
-                except IndexError:
-                    val = match.group(0).strip()
                 
                 if val:
                     if category in ["technical", "tariffs"] or field == "valor_total":
