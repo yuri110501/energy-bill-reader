@@ -97,8 +97,8 @@ REGEX_RULES = {
         "TECHNICAL": {
             "geracao_kwh": r"Consumo Compensado FP\s*\(kWh\)\s+([\d\.]+,\d{2})",
             "demanda_ativa": r"Demanda\s+Contratada\s+Ú?nica\s*\(kW\)\s*:\s*([\d\.]+,\d{2})",
-            "consumo_ativo_na_ponta_tusd": r"Consumo\s+Fora\s+Ponta\s+\(kWh\)\s+(\d{1,3}(?:\.\d{3})*,\d{2})(?:[\s\S]*?Consumo\s+Compensado\s+FP\s+\(kWh\)\s+(\d{1,3}(?:\.\d{3})*,\d{2}))?",
-            "consumo_ativo_fora_ponta_tusd": r"Consumo Fora Ponta\s*\(kWh\)\s+([\d\.]+,\d{2})",
+            "consumo_ativo_na_ponta_tusd": r"Consumo\s+Ponta\s+\(kWh\)\s+([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})",
+            "consumo_ativo_fora_ponta_tusd": r"Consumo\s+Fora\s+Ponta\s+\(kWh\)\s+(\d{1,3}(?:\.\d{3})*,\d{2})(?:[\s\S]*?Consumo\s+Compensado\s+FP\s+\(kWh\)\s+(\d{1,3}(?:\.\d{3})*,\d{2}))?",
             "consumo_reativo_exc_fora_ponta": r"Consumo Reativo Excedente FP\s*\(kVAr\)\s+([\d\.]+,\d{2})",
         },
         "TARIFFS": {

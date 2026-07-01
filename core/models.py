@@ -61,10 +61,32 @@ class BillData(BaseModel):
     @classmethod
     def from_raw_dict(cls, data: dict) -> "BillData":
         """
-        Cria a partir de um dict bruto, filtrando apenas os campos existentes no modelo.
+        Cria a partir de um dict bruto, filtrando apenas os campos existentes no modelo
+        e normalizando os campos numéricos automaticamente.
         """
+        from core.extraction import _normalize_number
+        
+        # Mapeamento de todos os campos que representam valores numéricos (moeda, consumo, demanda e tarifas)
+        numeric_fields = {
+            "valor_total", "geracao_kwh", "demanda_ativa", "demanda_ativa_preco_unitario",
+            "demanda_reativa_excedente", "demanda_reativa_excedente_preco_unitario",
+            "consumo_ativo_na_ponta_tusd", "consumo_ativo_na_ponta_te_preco_unitario",
+            "consumo_ativo_na_ponta_tusd_preco_unitario", "consumo_ativo_fora_ponta_tusd",
+            "consumo_ativo_fora_ponta_tusd_preco_unitario", "consumo_ativo_fora_ponta_te_preco_unitario",
+            "consumo_reativo_exc_na_ponta", "consumo_reativo_exc_na_ponta_preco_unitario",
+            "consumo_reativo_exc_fora_ponta"
+        }
+        
         cleaned = {}
         for k in cls.model_fields:
             v = data.get(k)
-            cleaned[k] = None if v in (None, "None", "null", "") else str(v)
+            if v in (None, "None", "null", ""):
+                cleaned[k] = None
+            else:
+                v_str = str(v)
+                if k in numeric_fields:
+                    v_norm = _normalize_number(v_str)
+                    cleaned[k] = v_norm if v_norm is not None else None
+                else:
+                    cleaned[k] = v_str.strip()
         return cls(**cleaned)

@@ -75,18 +75,32 @@ TABLE_ROW_MAP: Dict[str, Dict[str, str]] = {
 # ---------------------------------------------------------------------------
 
 def _normalize_number(value: str) -> Optional[str]:
-    """Converte formato brasileiro (1.234,56) para float string (1234.56)."""
+    """
+    Normaliza números para o formato computacional (ponto como separador decimal).
+    Regras:
+      1. Se houver vírgula, substitui por ponto (e remove pontos de milhar).
+      2. Se não houver vírgula e houver ponto seguido por exatamente 3 dígitos (ex: 1.200),
+         o ponto é removido (separador de milhar).
+      3. Se houver ponto seguido de 1, 2 ou mais de 3 dígitos, o ponto é mantido (decimal).
+    """
     if not value: return None
     v = str(value).strip().rstrip("-").replace(" ", "")
-    if re.search(r"\d\.\d{3},\d", v):
+    
+    # REGRA 1: Se houver vírgula
+    if "," in v:
         v = v.replace(".", "").replace(",", ".")
-    elif "," in v:
-        v = v.replace(",", ".")
+        
+    # REGRA 2 e 3: Se não houver vírgula, mas houver ponto
+    elif "." in v:
+        # Se o ponto for seguido por exatamente 3 dígitos no final da string (ex: 1.200),
+        # removemos o ponto (pois não se enquadra na regra de 1, 2 ou mais de 3 dígitos decimais).
+        if re.search(r"\.\d{3}$", v):
+            v = v.replace(".", "")
+            
+    # Remove qualquer outro caractere residual não numérico
     v = re.sub(r"[^\d.-]", "", v)
-    try:
-        return str(float(v))
-    except ValueError:
-        return None
+    return v if v else None
+
 
 def _calculate_confidence(data: Dict[str, Any]) -> float:
     """Calcula score de confiança baseado nos campos críticos."""
@@ -131,7 +145,7 @@ def decide_profile(dist: str, classif: str, raw_text: str = "") -> str:
         
     return "Generico"
 
-def apply_rules(text: str, profile: str) -> Dict[str, Any]:
+def apply_rules(text: str, profile: str) -> Dict[str, Any]: 
     """Aplica o dicionário de regras."""
     rules = REGEX_RULES.get(profile, REGEX_RULES["Generico"])
     extracted = {}
@@ -144,7 +158,7 @@ def apply_rules(text: str, profile: str) -> Dict[str, Any]:
             if match:
                 val = None
 
-                if profile == "Ambar" and field == "consumo_ativo_fora_ponta_tusd":
+                if profile in ("Ambar", "Equatorial") and field == "consumo_ativo_fora_ponta_tusd":
                     first = match.group(1).strip() if match.group(1) else None
                     second = None
                     if len(match.groups()) >= 2:
@@ -177,7 +191,7 @@ def apply_rules(text: str, profile: str) -> Dict[str, Any]:
                         val = match.group(0).strip()
                 
                 if val:
-                    if category in ["technical", "tariffs"] or field == "valor_total":
+                    if category.lower() in ["technical", "tariffs"] or field == "valor_total":
                         val = _normalize_number(val)
                     extracted[field] = val
                     
