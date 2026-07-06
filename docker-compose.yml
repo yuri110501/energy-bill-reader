@@ -1,23 +1,23 @@
 #version: '3.8'
 
 services:
+  # Serviço principal: monitora a pasta de entrada em busca de novas faturas
   watcher:
     build: .
     container_name: energy-bill-watcher
     # Reinicia o serviço caso ele caia, mas respeita a parada manual
     restart: unless-stopped
+    # Injeta variáveis de ambiente a partir do arquivo .env local (sem montar o arquivo como volume)
+    env_file:
+      - .env
     volumes:
       # Mapeia a pasta local './Contas' do host para a pasta interna '/app/Contas' do container
       - ${WATCH_DIR:-./Contas}:/app/Contas
-      # Mapeia o storage local para que os CSVs e JSONs persistam na máquina
+      # Mapeia o storage local para que os CSVs e JSONs persistam na máquina host
       - ${LOCAL_STORAGE:-./storage}:/app/storage
-      # Mapeia os mapeamentos locais para customização em tempo de execução
+      # Mapeia os mapeamentos locais para customização em tempo de execução sem rebuild
       - ./data:/app/data
-      # Lê variáveis de ambiente a partir do arquivo local .env
-      - .env:/app/.env
     environment:
-      #- GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      #- GEMINI_MODEL=${GEMINI_MODEL}
       - LOCAL_STORAGE=/app/storage
       - WATCH_DIR=/app/Contas
 
@@ -26,15 +26,14 @@ services:
   batch:
     build: .
     container_name: energy-bill-batch
+    env_file:
+      - .env
     volumes:
       - ${WATCH_DIR:-./Contas}:/app/Contas
       - ${LOCAL_STORAGE:-./storage}:/app/storage
       - ./data:/app/data
-      - .env:/app/.env
     command: ["python", "batch_processor.py", "/app/Contas", "/app/storage/batch_results.txt"]
     environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - GEMINI_MODEL=${GEMINI_MODEL}
       - LOCAL_STORAGE=/app/storage
 
   # Serviço executado sob demanda para rodar os testes
@@ -46,5 +45,4 @@ services:
       - ${WATCH_DIR:-./Contas}:/app/Contas
       - ./tests:/app/tests
       - ./data:/app/data
-      - .env:/app/.env
-    command: ["python", "run_test.py"]
+    command: ["python", "-m", "pytest"]

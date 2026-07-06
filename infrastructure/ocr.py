@@ -5,6 +5,8 @@ Motor de OCR para extração de texto de PDFs e imagens.
 Responsabilidade única: converter arquivo em texto e tabelas estruturadas.
 """
 
+from core.config import TESSERACT_CMD
+
 import os
 
 try:
@@ -20,9 +22,10 @@ try:
 except ImportError:
     HAS_PDFPLUMBER = False
 
-# Configuração para Windows (se o Tesseract estiver instalado no caminho padrão)
-if os.name == 'nt' and HAS_OCR:
-    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# Configura o executável do Tesseract. Em Linux/Docker, o PATH do sistema é suficiente
+# e TESSERACT_CMD aponta para o padrão do Windows apenas como fallback local.
+if HAS_OCR and os.name == 'nt':
+    pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
 
 
 def extract_text(file_path: str) -> str:

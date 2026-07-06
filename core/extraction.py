@@ -8,6 +8,7 @@ import re
 import logging
 from typing import Dict, Any, List, Optional, Tuple
 from core.rules import REGEX_RULES
+from decimal import Decimal
 
 # Configuração de logging
 logger = logging.getLogger(__name__)
@@ -74,32 +75,37 @@ TABLE_ROW_MAP: Dict[str, Dict[str, str]] = {
 # Utilitários de Normalização
 # ---------------------------------------------------------------------------
 
+
 def _normalize_number(value: str) -> Optional[str]:
     """
     Normaliza números para o formato computacional (ponto como separador decimal).
+
     Regras:
-      1. Se houver vírgula, substitui por ponto (e remove pontos de milhar).
-      2. Se não houver vírgula e houver ponto seguido por exatamente 3 dígitos (ex: 1.200),
-         o ponto é removido (separador de milhar).
-      3. Se houver ponto seguido de 1, 2 ou mais de 3 dígitos, o ponto é mantido (decimal).
+      1. Remove todos os pontos usados como separadores de milhar.
+      2. Substitui a vírgula por ponto.
+      3. Retorna o valor no formato compatível com computação.
     """
-    if not value: return None
+    if not value:
+        return None
+
     v = str(value).strip().rstrip("-").replace(" ", "")
-    
-    # REGRA 1: Se houver vírgula
-    if "," in v:
-        v = v.replace(".", "").replace(",", ".")
-        
-    # REGRA 2 e 3: Se não houver vírgula, mas houver ponto
-    elif "." in v:
-        # Se o ponto for seguido por exatamente 3 dígitos no final da string (ex: 1.200),
-        # removemos o ponto (pois não se enquadra na regra de 1, 2 ou mais de 3 dígitos decimais).
-        if re.search(r"\.\d{3}$", v):
-            v = v.replace(".", "")
-            
-    # Remove qualquer outro caractere residual não numérico
+
+    if not v:
+        return None
+
+    # Remove separadores de milhar (pontos) e troca vírgula por ponto
+    v = v.replace(".", "").replace(",", ".")
+
+    # Remove caracteres não numéricos, mantendo sinal negativo e ponto decimal
     v = re.sub(r"[^\d.-]", "", v)
-    return v if v else None
+
+    if not v or v in {".", "-", "-."}:
+        return None
+
+    try:
+        return format(Decimal(v), "f")
+    except Exception:
+        return None
 
 
 def _calculate_confidence(data: Dict[str, Any]) -> float:

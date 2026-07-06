@@ -1,125 +1,149 @@
-# 🔌 Energy Bill Reader (Advanced Data Pipeline)
+﻿# Energy Bill Reader
 
-Este projeto é um pipeline de engenharia de dados de alta precisão para a extração, processamento e análise de faturas de energia elétrica. Ele utiliza uma abordagem híbrida de OCR, Processamento de Linguagem Natural (NLP) via **Arquitetura Config-Driven (Regex as Variables)** e Refinamento de IA (Gemini API) como fallback final.
+Este repositório automatiza o processamento de faturas de energia em PDF ou imagem, extraindo dados estruturados para posterior análise. O fluxo atual combina OCR, extração baseada em regras e regex, refinamento opcional por IA e persistência local em JSON e CSV.
 
----
+## O que o projeto faz
 
-## 🏗️ Arquitetura do Sistema
+- Lê arquivos de conta de energia em formato PDF ou imagem.
+- Usa pdfplumber para PDFs digitais e Tesseract para PDFs escaneados ou imagens.
+- Extrai campos estruturados com regras e regex, com pontuação de confiança.
+- Pode usar a API do Google Gemini para refinar dados quando a extração local não é suficiente.
+- Persiste os resultados em arquivos JSON individuais e em um CSV consolidado.
+- Possui um watcher para processar novos arquivos automaticamente em uma pasta monitorada e um modo batch para processamento sob demanda.
 
-O projeto segue princípios de **Clean Architecture**, separando a lógica de negócio das implementações de infraestrutura e permitindo escalabilidade modular.
+## Fluxo de processamento
+
+1. Ingestão do arquivo em uma pasta de entrada.
+2. Extração de texto e, quando possível, tabelas estruturadas.
+3. Identificação de campos via regras e regex.
+4. Refinamento opcional por IA se a confiança estiver abaixo do limite configurado.
+5. Persistência em armazenamento local.
+
+## Estrutura do repositório
 
 ```text
 energy-bill-reader/
-├── app.py                  # API REST (Flask) para processamento unitário
-├── batch_processor.py      # Script de alto desempenho para processamento em lote
-├── run_test.py             # Suíte de testes de integração e validação
-├── core/                   # Camada de Domínio e Lógica de Negócio (CORE)
-│   ├── extraction.py       # Motor genérico de extração (Rules-Based Engine)
-│   ├── rules.py            # [NOVO] Dicionário mestre de padrões Regex por perfil
-│   ├── models.py           # Modelos de dados (Pydantic) e Tipagem (PEP 484)
-│   └── refinement.py       # Lógica de integração com LLM para fallback de qualidade
-├── infrastructure/         # Detalhes de Implementação e Adaptadores
-│   ├── ocr.py              # Adaptadores de OCR (PDFPlumber / Tesseract)
-│   ├── repository.py       # Camada de persistência e repositório CSV
-│   └── storage.py          # Gestão de sistema de arquivos e organização
-├── services/               # Camada de Aplicação e Orquestração
-│   └── bill_service.py     # Orquestrador do fluxo: Tabelas -> Regex -> Fallback IA
-├── storage/                # Data Lake Local (Estrutura de Bronze/Silver)
-│   ├── json/               # Raw Data (Arquivos JSON individuais)
-│   └── bills_data.csv      # Consolidado para Analytics (Dataset Final)
-└── requirements.txt        # Dependências do ecossistema
+├── batch_processor.py      # Processamento em lote de arquivos
+├── watcher.py              # Monitoramento contínuo de uma pasta
+├── run_test.py             # Script de validação manual do pipeline
+├── core/                   # Regras de extração, modelos e refinamento
+├── infrastructure/         # OCR, repositório e armazenamento local
+├── services/               # Orquestração do processamento principal
+├── data/                   # Mapeamentos e dados auxiliares
+├── storage/                # JSONs processados e CSV consolidado
+├── tests/                  # Testes e scripts de inspeção
+├── docker-compose.yml      # Serviços Docker para watcher, batch e testes
+├── Dockerfile              # Imagem do ambiente de execução
+├── requirements.txt        # Dependências Python
+└── .env.example            # Variáveis de ambiente de exemplo
 ```
 
----
+## Requisitos
 
-## 🚀 Arquitetura Config-Driven
+- Python 3.11+
+- Tesseract OCR instalado no sistema
+- Dependências listadas em requirements.txt
 
-Diferente de sistemas tradicionais com lógica rígida, este motor utiliza **Perfis de Configuração**. Para adicionar uma nova distribuidora ou layout, basta editar o arquivo `core/rules.py`.
+No Windows, o executável do Tesseract pode precisar ser apontado via variável de ambiente ou configuração em core/config.py.
 
-### Hierarquia de Extração:
-1.  **Sensor 1 (Tabelas)**: Tenta extrair dados via estrutura nativa do PDF (PDFPlumber).
-2.  **Sensor 2 (Motor de Regex)**: Identifica o perfil (Ex: `Celpe_A`) e aplica padrões específicos de NLP.
-3.  **Sensor 3 (Fallback Genérico)**: Se campos críticos falharem, aplica padrões universais.
-4.  **Sensor 4 (AI Fallback)**: Se o Score de Confiança for inferior a **0.5**, a IA entra em ação para refinar os dados.
+## Configuração
 
----
+1. Crie o arquivo .env a partir do exemplo:
 
-## 📊 Pipeline de Dados (Data Flow)
+```bash
+copy .env.example .env
+```
 
-1.  **Ingestão**: Recebimento do PDF/Imagem via API ou Processamento em Lote.
-2.  **OCR Layer**: Conversão de imagem/PDF para texto bruto preservando a estrutura espacial.
-3.  **Classification Layer**: Identificação automática da distribuidora e grupo tarifário (A/B).
-4.  **Extraction Engine**: Aplicação iterativa de regras baseadas no perfil detectado.
-5.  **Refinement Layer**: O Gemini AI atua como um "Data Quality Specialist" apenas quando a extração determinística falha.
-6.  **Persistência**: Escrita atômica em CSV e persistência em JSON para rastreabilidade.
+2. Ajuste as variáveis conforme necessário:
 
----
+- LOCAL_STORAGE: pasta para persistência local
+- WATCH_DIR: pasta monitorada pelo watcher
+- GOOGLE_API_KEY: chave da API do Google Gemini (opcional)
+- GEMINI_MODEL: modelo Gemini a ser usado
+- AI_CONFIDENCE_THRESHOLD: limite para disparar refinamento por IA
+- TESSERACT_CMD: caminho do executável do Tesseract (Windows)
 
-## 🛠️ Qualidade de Código e TDD
+## Instalação local
 
-Este projeto adota o ciclo **Red-Green-Refactor**:
-- Use `python run_test.py` para validar o pipeline completo.
-- Todos os campos extraídos seguem as tipagens definidas em `core/models.py`.
-- O código é documentado focando no **"Porquê"** da lógica (especialmente as nuances matemáticas de Grupo A).
+```bash
+pip install -r requirements.txt
+```
 
----
+Se necessário, instale o Tesseract no sistema:
 
-## 📈 Campos Extraídos (Destaques Técnicos)
+- Ubuntu/Debian: sudo apt install tesseract-ocr tesseract-ocr-por
+- macOS: brew install tesseract tesseract-lang
+- Windows: instalar o pacote oficial do Tesseract e apontar o caminho em TESSERACT_CMD
 
-O pipeline captura mais de 30 campos, incluindo métricas críticas de auditoria:
+## Execução local
 
-| Categoria | Campos Principais |
-|---|---|
-| **Metadados** | Distribuidora, Código Cliente, Mês Ref, Vencimento, Valor Total. |
-| **Demanda (A)** | Demanda Ativa (kW), Demanda Reativa Excedente (kVAr). |
-| **Consumo TUSD** | Consumo Ativo Ponta/Fora Ponta (kWh). |
-| **Consumo TE** | Consumo Ativo Ponta/Fora Ponta (kWh) + Preços Unitários. |
-| **Reativo** | Consumo Reativo Excedente Ponta/Fora Ponta (kVARh). |
-| **Geração** | Energia Injetada no Mês (Geração Distribuída). |
+### Modo watcher
 
----
-> **Mentor Note:** A migração para `rules.py` transforma o código em um produto escalável. Agora, o desenvolvedor não precisa mais mexer na lógica do motor para suportar novas faturas, apenas "ensinar" novos padrões ao dicionário de regras.
+Monitora a pasta de entrada e processa novos arquivos automaticamente:
 
----
+```bash
+python watcher.py
+```
 
-## 🐳 Setup e Execução via Docker (Recomendado para Novos Computadores)
+### Modo batch
 
-Para facilitar a execução em computadores que não possuem ambiente de programação configurado (sem necessidade de instalar Python, dependências ou Tesseract OCR), o projeto conta com um ambiente isolado em Docker.
+Processa todos os arquivos compatíveis em uma pasta e gera um arquivo de resultados:
 
-### Passo a Passo
+```bash
+python batch_processor.py ./Contas ./storage/batch_results.txt
+```
 
-1. **Clonar o Repositório**
-   Abra o terminal e clone o projeto:
-   ```bash
-   git clone https://github.com/yuri110501/energy-bill-reader.git
-   cd energy-bill-reader
-   ```
+### Validação manual
 
-2. **Configurar as Variáveis de Ambiente**
-   Renomeie o arquivo de exemplo para o formato definitivo:
-   - No Windows: `ren .env.example .env` (ou copie manualmente renomeando)
-   - No Linux/macOS: `cp .env.example .env`
+```bash
+python run_test.py
+```
 
-3. **Construir o Ambiente Docker**
-   Certifique-se de que o **Docker Desktop** (ou Docker Engine) esteja em execução. No terminal, rode:
-   ```bash
-   docker compose build
-   ```
-   *(Este passo só demora na primeira vez, pois ele compilar o Tesseract OCR e pacotes de idioma em português).*
+### Testes
 
-4. **Escolher o Modo de Execução**
-   O docker-compose possui múltiplos serviços configurados:
-   
-   - **Modo Watcher (Monitoramento Contínuo):**
-     Monitora ativamente a pasta `Contas/` no seu computador. Qualquer PDF arrastado para essa pasta será processado em tempo real.
-     ```bash
-     docker compose up watcher
-     ```
-   
-   - **Modo Batch (Processamento em Lote Imediato):**
-     Processa de uma só vez todas as faturas atuais da pasta `Contas/` e encerra.
-     ```bash
-     docker compose run --rm batch
-     ```
+```bash
+pytest
+```
 
-Todos os resultados estruturados e CSVs analíticos serão salvos diretamente na pasta local `storage/`, que será criada automaticamente no diretório do projeto.
+## Execução com Docker
+
+O projeto já inclui um ambiente Docker para facilitar o uso em diferentes máquinas.
+
+### Build da imagem
+
+```bash
+docker compose build
+```
+
+### Watcher
+
+```bash
+docker compose up watcher
+```
+
+### Processamento em lote
+
+```bash
+docker compose run --rm batch
+```
+
+### Testes
+
+```bash
+docker compose run --rm tests
+```
+
+## Saídas geradas
+
+Os resultados são salvos em:
+
+- storage/json/: um JSON por arquivo processado
+- storage/bills_data.csv: consolidação dos dados extraídos
+- storage/processadas/: PDFs arquivados após o processamento
+- storage/batch_results.txt: resumo do processamento em lote
+
+## Observações importantes
+
+- Se GOOGLE_API_KEY não estiver configurada, o pipeline funciona apenas com a extração local.
+- O watcher é pensado para uso contínuo em uma pasta de entrada, enquanto o batch é mais indicado para processamentos pontuais.
+- O projeto está estruturado para evoluir com novas regras de extração sem alterar a lógica principal do motor.
